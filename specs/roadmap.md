@@ -55,23 +55,17 @@ The smoke test run (`smoke5`) achieved 40% (2/5 resolved), but 2 out of 3 failur
 
 ---
 
-## Phase 3: Context Compaction & Architecture Exploration
+## Phase 3: Context Compaction & Architecture Exploration (Completed)
 
-### Micro-Phase 3.1: Sampling & Generation Budget Tuning
-- **Task**: Benchmark `temperature` (0.0 vs 0.2), `top_p` (0.95), and `thinking_budget` (2048 vs 4096) in [`submission/agent.yaml`](file:///c:/Users/acquayefrank/Code/graft/submission/agent.yaml).
-- **Deliverable**: Optimized `agent.yaml` generation config.
-- **Verification**: Compare token consumption and solution quality in traces.
+Phase 3 designed, implemented, and empirically evaluated a hierarchical sub-agent architecture (`subagent_v1`) featuring an isolated, read-only `code_analyzer` agent tool vs. the paced single-agent baseline (`recovered_v2`).
 
-### Micro-Phase 3.2: Read-Only Analyzer Sub-Agent Evaluation
-- **Task**: Test separating repository exploration from code editing:
-  - Configure a read-only `code_analyzer` wrapped as an `AgentTool` (`skip_summarization: true`).
-  - Keeps large `read_file` outputs and symbol searches in an isolated sub-agent context, preserving the root coder agent's context window.
-- **Deliverable**: `submission/sub_agents/code_analyzer.yaml` and updated root `agent.yaml`.
-- **Verification**: Evaluate on 10 dev tasks; assess whether context savings outweigh the slight multi-agent latency overhead.
-
-### Micro-Phase 3.3: Paper Track - Architecture & Token Ablation
-- **Task**: Synthesize the empirical comparison between single-agent and sub-agent architectures, plus thinking token budget trade-offs.
-- **Deliverable**: `paper/tables/architecture_ablation.md` with metrics (resolution rate, token efficiency, turn latency).
+### Deliverables & Empirical Findings:
+- **`eval/dev10.json`**: Curated balanced 10-task screening benchmark (5 Rich, 5 FastAPI).
+- **Sub-Agent Implementation**: [`submission/sub_agents/code_analyzer.yaml`](file:///c:/Users/acquayefrank/Code/graft/submission/sub_agents/code_analyzer.yaml) and [`submission/prompts/analyzer.md`](file:///c:/Users/acquayefrank/Code/graft/submission/prompts/analyzer.md), integrated into root agent with ADK `SandboxedAgentConfig` schema compliance.
+- **Remote Benchmark Screening**: Completed on Kaggle 4x L4 GPUs (4/10 resolved, 40.0% resolution, 298.7s mean latency).
+- **Architecture Ablation Artifact**: Populated [`paper/tables/architecture_ablation.md`](file:///c:/Users/acquayefrank/Code/graft/paper/tables/architecture_ablation.md). Findings confirm strong compaction advantages on modular repos (3/5 on FastAPI), but show that turn-latency tax and delegation thrashing on open-ended tasks (Rich) cause session timeouts.
+- **Decision Gate Outcome**: Fallback condition triggered (< 56.7% resolution, > 260s latency); `recovered_v2` is retained as the production configuration for competition leaderboard submission, while `subagent_v1` is documented in the Paper Track manuscript.
+- **Branch**: Merged into `main`.
 
 ---
 
