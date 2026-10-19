@@ -5,8 +5,10 @@ The task list is embedded from eval/dev30.json at build time.
 Optional env vars: RUN_NAME (default "baseline"), MAX_TASKS (default: all).
 """
 
+import argparse
 import json
 import os
+import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
@@ -14,19 +16,6 @@ KAGGLE_USER = "acquayefrank"
 DATASET_SLUG = "graft-submission"
 KERNEL_SLUG = "graft-dev-eval"
 
-dev_tasks = json.loads((ROOT / "eval" / "dev30.json").read_text())
-task_meta = {t["instance_id"]: {"repo": t["repo"], "bucket": t["bucket"], "lines": t["lines"]} for t in dev_tasks}
-
-INTRO = f"""# graft: dev evaluation
-
-Runs the submission from the `{KAGGLE_USER}/{DATASET_SLUG}` dataset against a fixed {len(dev_tasks)}-task dev set
-from the public training tasks, then summarises resolution rate, timing and failures.
-
-**Settings:** Accelerator = GPU L4 x4, Internet = off. Inputs: the competition data,
-`metric/gemma-4-developer-agent-wheelhouse`, the Gemma 4 model(s) you use, and `{KAGGLE_USER}/{DATASET_SLUG}`.
-
-Edit the `RUN_NAME` / `MODEL_OVERRIDE` / `MAX_TASKS` knobs in the config cell, then Run All.
-Download `/kaggle/working/<RUN_NAME>_results.zip` afterwards (traces, logs, patches, summary)."""
 
 # Cell 1 is copied from the official starter notebook (ryanholbrook/getting-started-gemma-4-developer-agent).
 SETUP = r'''import glob
@@ -366,12 +355,43 @@ def md(src: str) -> dict:
 
 
 def main() -> None:
+    parser = argparse.ArgumentParser(description="Build the Kaggle dev-eval notebook.")
+    parser.add_argument("--benchmark", choices=["dev10", "dev30"], default=os.environ.get("BENCHMARK", "dev10"),
+                        help="Benchmark split to evaluate: dev10 (screening) or dev30 (full validation)")
+    parser.add_argument("--run-name", default=os.environ.get("RUN_NAME", None),
+                        help="Run name for results folder and metrics summary")
+    parser.add_argument("--max-tasks", default=os.environ.get("MAX_TASKS", "None"),
+                        help="Max number of tasks to run (default: all tasks in benchmark)")
+    args = parser.parse_args()
+
+    benchmark_name = args.benchmark
+    benchmark_file = ROOT / "eval" / f"{benchmark_name}.json"
+    if not benchmark_file.is_file():
+        sys.exit(f"Benchmark file not found: {benchmark_file}")
+
+    dev_tasks = json.loads(benchmark_file.read_text(encoding="utf-8"))
+    task_meta = {t["instance_id"]: {"repo": t["repo"], "bucket": t["bucket"], "lines": t["lines"]} for t in dev_tasks}
+
+    run_name = args.run_name or ("subagent_v1_dev10" if benchmark_name == "dev10" else "subagent_v1_dev30")
+    max_tasks_val = args.max_tasks
+
+    intro = f"""# graft: dev evaluation ({benchmark_name})
+
+Runs the submission from the `{KAGGLE_USER}/{DATASET_SLUG}` dataset against a fixed {len(dev_tasks)}-task dev set (`eval/{benchmark_name}.json`)
+from the public training tasks, then summarises resolution rate, timing and failures.
+
+**Settings:** Accelerator = GPU L4 x4, Internet = off. Inputs: the competition data,
+`metric/gemma-4-developer-agent-wheelhouse`, the Gemma 4 model(s) you use, and `{KAGGLE_USER}/{DATASET_SLUG}`.
+
+Edit the `RUN_NAME` / `MODEL_OVERRIDE` / `MAX_TASKS` knobs in the config cell, then Run All.
+Download `/kaggle/working/<RUN_NAME>_results.zip` afterwards (traces, logs, patches, summary)."""
+
     config = (CONFIG.replace("__TASK_META__", json.dumps(task_meta, indent=1))
-              .replace("__RUN_NAME__", repr(os.environ.get("RUN_NAME", "recovered_v2")))
-              .replace("__MAX_TASKS__", os.environ.get("MAX_TASKS", "None"))
+              .replace("__RUN_NAME__", repr(run_name))
+              .replace("__MAX_TASKS__", max_tasks_val)
               .replace("__USER__", KAGGLE_USER).replace("__SLUG__", DATASET_SLUG))
     cells = [
-        md(INTRO),
+        md(intro),
         md("## 1. Install the harness wheelhouse"), code(SETUP),
         md("## 2. Config: submission, model, dev tasks"), code(config),
         md("## 3. Start vLLM (same settings as the scorer)"), code(SERVER),
