@@ -43,17 +43,17 @@ The 10-task split (`eval/dev10.json`) serves as the rapid screening gate before 
 
 | Task ID | Repository | Bucket | Baseline | `recovered_v1` | `recovered_v2` | `subagent_v1` | Key Diagnostic Role |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `rich_3278` | `Textualize/rich` | tiny (1L) | TIMEOUT (305.1s) | TIMEOUT (303.8s) | **RESOLVED (262.2s)** | *TBD* | Scratchpad path traversal & isolation |
-| `rich_3470` | `Textualize/rich` | tiny (2L) | TIMEOUT (305.5s) | TIMEOUT (296.0s) | **RESOLVED (209.7s)** | *TBD* | Post-fix over-verification / Stop-and-Submit |
-| `rich_3676` | `Textualize/rich` | small (13L) | FAIL | RESOLVED (241.1s) | **RESOLVED (186.1s)** | *TBD* | Multi-file edit synthesis & indentation |
-| `rich_4076` | `Textualize/rich` | small (6L) | FAIL | FAIL | FAIL (150.2s) | *TBD* | Code analyzer caller localization |
-| `rich_3052` | `Textualize/rich` | medium (34L)| FAIL | FAIL | FAIL (227.4s) | *TBD* | Medium-scale component refactor |
-| `fastapi_13920` | `fastapi/fastapi` | tiny (4L) | TIMEOUT (304.2s) | TIMEOUT (305.0s) | FAIL (369.0s) | *TBD* | Sub-agent search speedup on timeout bug |
-| `fastapi_14301` | `fastapi/fastapi` | tiny (5L) | RESOLVED (189.4s)| RESOLVED (112.5s) | **RESOLVED (97.3s)** | *TBD* | Dependency schema complexity & clean anchor |
-| `fastapi_14077` | `fastapi/fastapi` | small (11L) | FAIL | RESOLVED (92.1s) | **RESOLVED (78.4s)** | *TBD* | Multi-file route annotation consistency |
-| `fastapi_14458` | `fastapi/fastapi` | small (7L) | RESOLVED (220.5s)| RESOLVED (195.0s) | **RESOLVED (188.4s)** | *TBD* | Response model validation |
-| `fastapi_15588` | `fastapi/fastapi` | medium (23L)| FAIL | FAIL | FAIL (133.3s) | *TBD* | OpenAPI parameter schema extraction |
-| **`dev10` Total** | — | — | **3 / 10 (30.0%)**| **5 / 10 (50.0%)** | **6 / 10 (60.0%)** | *TBD* | **Screening Gate: $\ge 7/10$ (70.0%)** |
+| `rich_3278` | `Textualize/rich` | tiny (1L) | TIMEOUT (305.1s) | TIMEOUT (303.8s) | **RESOLVED (262.2s)** | FAIL (292.4s) | Scratchpad path traversal & isolation |
+| `rich_3470` | `Textualize/rich` | tiny (2L) | TIMEOUT (305.5s) | TIMEOUT (296.0s) | **RESOLVED (209.7s)** | TIMEOUT (369.1s) | Post-fix over-verification / Stop-and-Submit |
+| `rich_3676` | `Textualize/rich` | small (13L) | FAIL | RESOLVED (241.1s) | **RESOLVED (186.1s)** | **RESOLVED (252.7s)** | Multi-file edit synthesis & indentation |
+| `rich_4076` | `Textualize/rich` | small (6L) | FAIL | FAIL | FAIL (150.2s) | TIMEOUT (368.6s) | Code analyzer caller localization |
+| `rich_3052` | `Textualize/rich` | medium (34L)| FAIL | FAIL | FAIL (227.4s) | FAIL (369.3s) | Medium-scale component refactor |
+| `fastapi_13920` | `fastapi/fastapi` | tiny (4L) | TIMEOUT (304.2s) | TIMEOUT (305.0s) | FAIL (369.0s) | TIMEOUT (376.6s) | Sub-agent search speedup on timeout bug |
+| `fastapi_14301` | `fastapi/fastapi` | tiny (5L) | RESOLVED (189.4s)| RESOLVED (112.5s) | **RESOLVED (97.3s)** | **RESOLVED (180.1s)** | Dependency schema complexity & clean anchor |
+| `fastapi_14077` | `fastapi/fastapi` | small (11L) | FAIL | RESOLVED (92.1s) | **RESOLVED (78.4s)** | **RESOLVED (187.0s)** | Multi-file route annotation consistency |
+| `fastapi_14458` | `fastapi/fastapi` | small (7L) | RESOLVED (220.5s)| RESOLVED (195.0s) | **RESOLVED (188.4s)** | **RESOLVED (296.9s)** | Response model validation |
+| `fastapi_15588` | `fastapi/fastapi` | medium (23L)| FAIL | FAIL | FAIL (133.3s) | FAIL (293.9s) | OpenAPI parameter schema extraction |
+| **`dev10` Total** | — | — | **3 / 10 (30.0%)**| **5 / 10 (50.0%)** | **6 / 10 (60.0%)** | **4 / 10 (40.0%)** | **Screening Gate: $\ge 7/10$ (70.0%)** |
 
 ---
 
