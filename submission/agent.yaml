@@ -7,11 +7,11 @@ tools:
   - read_file
   - edit_file
   - write_file
+  - search_similar_code
+  - get_code_neighbors
+  - get_code_subgraph
   - get_status
   - submit_patch
-  - agent_tool:
-      config_path: sub_agents/code_analyzer.yaml
-      skip_summarization: true
 generate_content_config:
   temperature: 0.1
   top_p: 0.95
