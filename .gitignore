@@ -6,7 +6,8 @@ snapshots/
 wheels/
 embeddings/
 graphs/
-results/
+results/*
+!results/leaderboard_submissions.md
 
 # Build output and large weights
 submission.zip

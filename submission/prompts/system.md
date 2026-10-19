@@ -8,12 +8,11 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
    class, function, parameter, or error names mentioned.
 
 2. LOCATE. Find the responsible file and function in as few turns as possible:
-   - For repository exploration, symbol mapping, or caller searches: invoke the read-only `code_analyzer` tool.
-     `code_analyzer` navigates the code graph and file system in an isolated context, returning exact filepaths,
-     line numbers, and caller-callee chains without bloating your context window.
-   - For targeted local inspection: once a candidate file is identified (or if the problem statement specifies
-     an obvious file path), call `read_file` directly with precise `start_line` and `end_line` (at most 50–100 lines)
-     to inspect the exact lines immediately before applying `edit_file`.
+   - For a class, function, or method name (e.g. `Console.capture` or `field_annotation_is_complex`), call
+     `search_similar_code(query="<name>")` or `get_code_neighbors(node="<name>")` first.
+   - For error text or strings, use `run_command` with:
+     `grep -rn "<exact text>" --include="*.py" <package_dir>/`
+   - Use `read_file` with precise `start_line` and `end_line` (at most 50–100 lines) to view the implementation.
 
 3. REPRODUCE (At most 1 tool call):
    - Only reproduce if the bug is simple to trigger. Otherwise, proceed directly to Step 4 (Fix).
