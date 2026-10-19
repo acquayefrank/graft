@@ -13,3 +13,4 @@ submission.zip
 *.safetensors
 __pycache__/
 build/
+scratch/

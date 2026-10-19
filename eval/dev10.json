@@ -1,0 +1,82 @@
+[
+  {
+    "instance_id": "rich_3278",
+    "repo": "Textualize/rich",
+    "lines": 1,
+    "files": 1,
+    "new_file": false,
+    "bucket": "tiny"
+  },
+  {
+    "instance_id": "rich_3470",
+    "repo": "Textualize/rich",
+    "lines": 2,
+    "files": 1,
+    "new_file": false,
+    "bucket": "tiny"
+  },
+  {
+    "instance_id": "rich_3676",
+    "repo": "Textualize/rich",
+    "lines": 13,
+    "files": 2,
+    "new_file": false,
+    "bucket": "small"
+  },
+  {
+    "instance_id": "rich_4076",
+    "repo": "Textualize/rich",
+    "lines": 6,
+    "files": 1,
+    "new_file": false,
+    "bucket": "small"
+  },
+  {
+    "instance_id": "rich_3052",
+    "repo": "Textualize/rich",
+    "lines": 34,
+    "files": 1,
+    "new_file": false,
+    "bucket": "medium"
+  },
+  {
+    "instance_id": "fastapi_13920",
+    "repo": "fastapi/fastapi",
+    "lines": 4,
+    "files": 1,
+    "new_file": false,
+    "bucket": "tiny"
+  },
+  {
+    "instance_id": "fastapi_14301",
+    "repo": "fastapi/fastapi",
+    "lines": 5,
+    "files": 1,
+    "new_file": false,
+    "bucket": "tiny"
+  },
+  {
+    "instance_id": "fastapi_14077",
+    "repo": "fastapi/fastapi",
+    "lines": 11,
+    "files": 3,
+    "new_file": false,
+    "bucket": "small"
+  },
+  {
+    "instance_id": "fastapi_14458",
+    "repo": "fastapi/fastapi",
+    "lines": 7,
+    "files": 1,
+    "new_file": false,
+    "bucket": "small"
+  },
+  {
+    "instance_id": "fastapi_15588",
+    "repo": "fastapi/fastapi",
+    "lines": 23,
+    "files": 1,
+    "new_file": false,
+    "bucket": "medium"
+  }
+]

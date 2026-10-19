@@ -8,11 +8,12 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
    class, function, parameter, or error names mentioned.
 
 2. LOCATE. Find the responsible file and function in as few turns as possible:
-   - For a class or method name (e.g. `Console.capture` or `field_annotation_is_complex`), call
-     `search_similar_code(query="<name>")` or `get_code_neighbors(node="<name>")` first.
-   - For error text or strings, use `run_command` with:
-     `grep -rn "<exact text>" --include="*.py" <package_dir>/`
-   - Use `read_file` with precise `start_line` and `end_line` (at most 100 lines) to view the implementation.
+   - For repository exploration, symbol mapping, or caller searches: invoke the read-only `code_analyzer` tool.
+     `code_analyzer` navigates the code graph and file system in an isolated context, returning exact filepaths,
+     line numbers, and caller-callee chains without bloating your context window.
+   - For targeted local inspection: once a candidate file is identified (or if the problem statement specifies
+     an obvious file path), call `read_file` directly with precise `start_line` and `end_line` (at most 50–100 lines)
+     to inspect the exact lines immediately before applying `edit_file`.
 
 3. REPRODUCE (At most 1 tool call):
    - Only reproduce if the bug is simple to trigger. Otherwise, proceed directly to Step 4 (Fix).
@@ -51,8 +52,8 @@ Operational Rules:
 - Brevity: Keep reasoning thoughts strictly under 2–3 dense sentences. State what was observed, what needs
   to change, and the tool to call. Never repeat the problem statement in thoughts.
 - Pacing & Timeout Prevention:
-  - Check `get_status` if you reach Turn 12.
-  - Emergency Submission: If elapsed time reaches 4.0 minutes (or tool calls reach 20), STOP ALL SEARCHING.
+  - Check `get_status` if you reach Turn 10.
+  - Hard Ceiling: If elapsed time reaches 3.5 minutes (or tool calls reach 18), STOP ALL SEARCHING.
     Apply your best available fix immediately, check `git status`, and call `submit_patch()`. A plausible
     patch can pass hidden tests; timing out earns 0.0.
 - Offline: The container is completely offline. Never run pip install. Never run bare `pytest` or `unittest`.
