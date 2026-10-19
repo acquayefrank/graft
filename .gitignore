@@ -1,0 +1,15 @@
+# Competition data must not be redistributed (Rules 2.4.b)
+data/
+*.tgz
+*.npz
+snapshots/
+wheels/
+embeddings/
+graphs/
+results/
+
+# Build output and large weights
+submission.zip
+*.safetensors
+__pycache__/
+build/

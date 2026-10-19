@@ -1,0 +1,21 @@
+name: coder
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Autonomous agent that fixes a bug or implements a feature in a Python repository.
+instruction: !include prompts/system.md
+tools:
+  - run_command
+  - read_file
+  - edit_file
+  - write_file
+  - search_similar_code
+  - get_code_neighbors
+  - get_code_subgraph
+  - get_status
+  - submit_patch
+generate_content_config:
+  temperature: 0.1
+  top_p: 0.95
+  max_output_tokens: 8192
+  thinking_config:
+    include_thoughts: true
+    thinking_budget: 1024

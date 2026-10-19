@@ -1,0 +1,9 @@
+# Evaluation budget optimized for 120 tasks within the 12-hour global window:
+# Mean task time is ~4 min, so 6.0 min per task provides headroom without exceeding 12 hours.
+# Single command timeout is reduced to 30s so hanging/infinite loop bugs don't burn the session.
+# Max tool calls set to 80 so exploratory rich tasks don't hit tool caps prematurely.
+evaluation:
+  max_time_minutes: 6
+  max_tool_calls: 80
+  max_turns: 120
+  timeout_seconds: 30
