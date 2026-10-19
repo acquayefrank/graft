@@ -1,0 +1,17 @@
+name: code_analyzer
+model: gemma-4-31b-it-qat-w4a16-ct
+description: Read-only code intelligence agent that navigates the repository, locates responsible files, and analyzes call graphs.
+instruction: !include ../prompts/analyzer.md
+tools:
+  - search_similar_code
+  - get_code_neighbors
+  - get_code_subgraph
+  - read_file
+  - run_command
+generate_content_config:
+  temperature: 0.1
+  top_p: 0.95
+  max_output_tokens: 4096
+  thinking_config:
+    include_thoughts: true
+    thinking_budget: 1024
