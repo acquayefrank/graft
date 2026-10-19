@@ -9,9 +9,8 @@ tools:
   - write_file
   - get_status
   - submit_patch
-  - name: AgentTool
-    args:
-      agent: !include sub_agents/code_analyzer.yaml
+  - agent_tool:
+      config_path: sub_agents/code_analyzer.yaml
       skip_summarization: true
 generate_content_config:
   temperature: 0.1
