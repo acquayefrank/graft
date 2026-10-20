@@ -80,3 +80,28 @@ Phase 4 scaled benchmark validation, packaged the production single-agent archit
 - **Trace Post-Mortem & Error Taxonomy**: Populated [`paper/tables/failure_taxonomy.md`](file:///c:/Users/acquayefrank/Code/graft/paper/tables/failure_taxonomy.md) analyzing all 14 failures in `dev30`, discovering the 15-line competence boundary (80% resolution on $\le 15$ line bugs, 0% on $> 15$ line bugs).
 - **Finalized Research Manuscript**: Completed [`paper/draft.md`](file:///c:/Users/acquayefrank/Code/graft/paper/draft.md) at 2,327 words ($\le 3,000$ words limit) with full empirical tables, architecture ablation insights, and post-mortem analysis.
 - **Branch**: Merged into `main`.
+
+---
+
+## Phase 5: Pacing Recalibration & Leaderboard Resubmission
+
+Following trace post-mortem and leaderboard analysis showing a 515-team cluster at 0.17 (10/60 tasks) and a premature emergency abort trigger in submission `57407885`, Phase 5 recalibrates agent pacing envelopes to prevent premature patch synthesis while strictly observing the competition's 6.0-minute per-task ceiling, verifies packaging integrity, and dispatches an official leaderboard resubmission.
+
+### Micro-Phase 5.1: Pacing Envelope & Status Check Recalibration
+- **Task**: Update [`submission/prompts/system.md`](file:///c:/Users/acquayefrank/Code/graft/submission/prompts/system.md):
+  - Relax the emergency hard ceiling from 3.5 minutes / 18 tool calls to 4.5 minutes / 30 tool calls (giving the agent sufficient headroom beyond the 229s mean task runtime).
+  - Shift `get_status` telemetry check instruction from Turn 10 to Turn 15.
+  - Maintain the mandatory Stop-and-Submit rule once reproduction passes.
+- **Deliverable**: Recalibrated `submission/prompts/system.md`.
+- **Verification**: Verify prompt diff and check for conflicting instructions.
+
+### Micro-Phase 5.2: Submission Packaging & Sandboxed Verification
+- **Task**: Build [`submission.zip`](file:///c:/Users/acquayefrank/Code/graft/submission.zip) using [`build_submission.py`](file:///c:/Users/acquayefrank/Code/graft/build_submission.py) and verify against `adk_submission` SandboxedAgentConfig schema (< 100 KB package size).
+- **Deliverable**: Verified `submission.zip`.
+- **Verification**: Run `python build_submission.py` with 0 validation errors.
+
+### Micro-Phase 5.3: Official Kaggle Leaderboard Dispatch
+- **Task**: Dispatch `submission.zip` to Kaggle competition `gemma-4-developer-agent` via Kaggle CLI.
+- **Deliverable**: Active leaderboard submission logged in [`results/leaderboard_submissions.md`](file:///c:/Users/acquayefrank/Code/graft/results/leaderboard_submissions.md).
+- **Exit Criteria**: Submission successfully dispatched and assigned an official Kaggle submission ID.
+
