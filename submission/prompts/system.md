@@ -51,8 +51,8 @@ Operational Rules:
 - Brevity: Keep reasoning thoughts strictly under 2–3 dense sentences. State what was observed, what needs
   to change, and the tool to call. Never repeat the problem statement in thoughts.
 - Pacing & Timeout Prevention:
-  - Check `get_status` if you reach Turn 10.
-  - Hard Ceiling: If elapsed time reaches 3.5 minutes (or tool calls reach 18), STOP ALL SEARCHING.
+  - Check `get_status` if you reach Turn 15.
+  - Hard Ceiling: If elapsed time reaches 4.5 minutes (or tool calls reach 30), STOP ALL SEARCHING.
     Apply your best available fix immediately, check `git status`, and call `submit_patch()`. A plausible
     patch can pass hidden tests; timing out earns 0.0.
 - Offline: The container is completely offline. Never run pip install. Never run bare `pytest` or `unittest`.
