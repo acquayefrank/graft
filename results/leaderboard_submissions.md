@@ -8,7 +8,7 @@ Tracking official submissions for Project Graft to the [Google - The Gemma 4 Dev
 
 | Ref (ID) | Date (UTC) | Architecture & Description | Checksum (SHA256) | Dev30 Resolution | Status | Public Score |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| **`57407885`** | **2026-10-19 20:00:09** | **Project Graft: Paced Single-Agent (`recovered_v2`)**<br>- 9 local tools (AST + Graph + Filesystem)<br>- Strict 3.5m pacing ceiling & Stop-and-Submit<br>- `build/repro.py` isolation & pre-submission `rm` guardrail<br>- `thinking_budget: 1024`, `temperature: 0.1` | `d85be638e95e3f226bdfc7e047a8e3ae577b23d0e14b29d44414387f95b7e0d9` | **53.3% (16/30)** | **PENDING** | *Scoring* |
+| **`57407885`** | **2026-10-19 20:00:09** | **Project Graft: Paced Single-Agent (`recovered_v2`)**<br>- 9 local tools (AST + Graph + Filesystem)<br>- Strict 3.5m pacing ceiling & Stop-and-Submit<br>- `build/repro.py` isolation & pre-submission `rm` guardrail<br>- `thinking_budget: 1024`, `temperature: 0.1` | `d85be638e95e3f226bdfc7e047a8e3ae577b23d0e14b29d44414387f95b7e0d9` | **53.3% (16/30)** | **COMPLETE** | **0.15** |
 | `57364226` | 2026-10-18 18:02:13 | Graft v2: Time-aware pacing, 80 tool calls, 30s cmd timeout, build/ scratchpad isolation | `—` | 53.3% (16/30) | COMPLETE | 0.17 |
 | `57302964` | 2026-10-17 08:16:01 | v1 baseline: 31B, single agent, no LoRA, all 9 tools, temp 1.0, thinking 2048 | `—` | 36.7% (11/30) | COMPLETE | 0.12 |
 
