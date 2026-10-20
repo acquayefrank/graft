@@ -93,4 +93,33 @@ Following trace post-mortem and leaderboard analysis showing a 515-team cluster 
 - **Official Competition Leaderboard Resubmission**: Dispatched `submission.zip` to `gemma-4-developer-agent` via Kaggle CLI. Assigned official **Ref `57454091`** (2026-10-20 21:51:18 UTC), currently pending evaluation, and logged in [`results/leaderboard_submissions.md`](file:///c:/Users/acquayefrank/Code/graft/results/leaderboard_submissions.md).
 - **Branch**: Merged into `main`.
 
+---
+
+## Phase 6: Trace-Grounded Protocol Calibration & Paper Track Integration
+
+Following trace-level empirical discovery across `dev30` execution logs showing termination deadlocks (`fastapi_13920`), 39 repeated `edit_file` parameter-mangling failures (`rich_4076`, `rich_3052`, `rich_3675`), zero-telemetry turn blindness (0/30 calls to `get_status`), and repro-script thrashing (`rich_3063`, `rich_3935`), Phase 6 hardens agent protocol contracts, updates paper track findings, and prepares a verified candidate package ready for leaderboard dispatch upon daily quota reset.
+
+### Micro-Phase 6.1: Execution Protocol Hardening
+- **Task**: Update [`submission/prompts/system.md`](file:///c:/Users/acquayefrank/Code/graft/submission/prompts/system.md):
+  - Add mandatory Clean-Exit Termination rule: emit zero tool calls and a plain-text confirmation on the turn following `submit_patch()`, satisfying harness completion criteria (`not has_function_call and context.patch_submitted`).
+  - Add immediate `edit_file` fallback rule: if `edit_file` fails once with missing `old_string`, immediately fall back to a python one-liner with `run_command` or `write_file`.
+  - Shift telemetry triggers from abstract turn counts to event-driven checkpoints: call `get_status` if reproduction fails on turn 1, or after any search error.
+- **Deliverable**: Hardened `submission/prompts/system.md`.
+- **Verification**: Prompt diff review and internal contract validation.
+
+### Micro-Phase 6.2: Submission Packaging & Sandboxed Verification
+- **Task**: Build [`submission.zip`](file:///c:/Users/acquayefrank/Code/graft/submission.zip) using [`build_submission.py`](file:///c:/Users/acquayefrank/Code/graft/build_submission.py) and verify against `adk_submission` SandboxedAgentConfig schema (< 100 KB package size).
+- **Deliverable**: Verified `submission.zip` candidate ready for Kaggle dispatch at 00:00 UTC.
+- **Verification**: Run `python build_submission.py` with 0 validation errors.
+
+### Micro-Phase 6.3: Paper Track Empirical Insights Integration
+- **Task**: Update [`paper/draft.md`](file:///c:/Users/acquayefrank/Code/graft/paper/draft.md) and [`paper/tables/failure_taxonomy.md`](file:///c:/Users/acquayefrank/Code/graft/paper/tables/failure_taxonomy.md) with trace-level discoveries:
+  - Document the Termination Deadlock phenomenon in open-weight agent harnesses.
+  - Document tool argument mangling (token concatenation of JSON keys) on docstrings with parentheses.
+  - Document turn blindness and the failure of turn-based telemetry prompts.
+  - Verify total paper word count remains strictly $\le 3,000$ words.
+- **Deliverable**: Updated manuscript [`paper/draft.md`](file:///c:/Users/acquayefrank/Code/graft/paper/draft.md) and taxonomy table.
+- **Verification**: Word count audit and empirical citation consistency check.
+
+
 
