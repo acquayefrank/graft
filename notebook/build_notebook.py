@@ -356,8 +356,8 @@ def md(src: str) -> dict:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description="Build the Kaggle dev-eval notebook.")
-    parser.add_argument("--benchmark", choices=["dev10", "dev30", "medium5"], default=os.environ.get("BENCHMARK", "dev10"),
-                        help="Benchmark split to evaluate: dev10 (screening), dev30 (full validation), or medium5 (Phase 7 medium bugs)")
+    parser.add_argument("--benchmark", default=os.environ.get("BENCHMARK", "dev10"),
+                        help="Benchmark split to evaluate (name of file in eval/<name>.json)")
     parser.add_argument("--run-name", default=os.environ.get("RUN_NAME", None),
                         help="Run name for results folder and metrics summary")
     parser.add_argument("--max-tasks", default=os.environ.get("MAX_TASKS", "None"),
@@ -372,7 +372,7 @@ def main() -> None:
     dev_tasks = json.loads(benchmark_file.read_text(encoding="utf-8"))
     task_meta = {t["instance_id"]: {"repo": t["repo"], "bucket": t["bucket"], "lines": t["lines"]} for t in dev_tasks}
 
-    run_name = args.run_name or (f"phase7_{benchmark_name}" if benchmark_name == "medium5" else ("subagent_v1_dev10" if benchmark_name == "dev10" else "subagent_v1_dev30"))
+    run_name = args.run_name or f"phase7_{benchmark_name}"
     max_tasks_val = args.max_tasks
 
     intro = f"""# graft: dev evaluation ({benchmark_name})
