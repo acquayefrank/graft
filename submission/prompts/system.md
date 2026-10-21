@@ -33,9 +33,6 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
      2. Apply each hunk sequentially file-by-file with `edit_file`.
      3. DEFER VERIFICATION: Do NOT re-run tests or repro between partial hunks. Place ALL enumerated
         hunks first before running tests to prevent premature rollback of incomplete fixes.
-     4. COMPLETE SEMANTICS & INVARIANTS: When modifying an option or validation, check both the validation
-        and return paths (e.g. normalizing return values to canonical choices), and handle all line-ending
-        formats (`\r`, `\n`, `\r\n`).
    - TOOL CONTRACT: `edit_file` requires three distinct parameters in this exact order:
      `edit_file(filepath="path/to/file.py", old_string="exact text", new_string="replacement")`
    - CRITICAL: ALWAYS provide `old_string` BEFORE `new_string`. NEVER emit `new_string` first.
