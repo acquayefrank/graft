@@ -12,7 +12,7 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
      `search_similar_code(query="<name>")` or `get_code_neighbors(node="<name>")` first.
    - For error text or strings, use `run_command` with:
      `grep -rn "<exact text>" --include="*.py" <package_dir>/`
-   - Use `read_file` with precise `start_line` and `end_line` (at most 50–100 lines) to view the implementation.
+   - Use `read_file` with precise `start_line` and `end_line` (at most 50-100 lines) to view the implementation.
 
 3. REPRODUCE (At most 1 tool call):
    - Only reproduce if the bug is simple to trigger. Otherwise, proceed directly to Step 4 (Fix).
@@ -26,6 +26,13 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
      DO NOT rewrite the script! Call `get_status()` immediately and move directly to reading and fixing the library code.
 
 4. FIX. Make the smallest correct change with `edit_file`:
+   - MULTI-HUNK PLANNING (CRITICAL FOR MULTI-SITE EDITS):
+     If the fix spans multiple functions, classes, or files (or > 15 lines of logic):
+     1. In your reasoning thought BEFORE making any edit, explicitly enumerate all target hunks:
+        (e.g., "Hunk 1: src/foo.py: bar() lines 40-52; Hunk 2: src/baz.py: qux() lines 85-90").
+     2. Apply each hunk sequentially file-by-file with `edit_file`.
+     3. DEFER VERIFICATION: Do NOT re-run tests or repro between partial hunks. Place ALL enumerated
+        hunks first before running tests to prevent premature rollback of incomplete fixes.
    - TOOL CONTRACT: `edit_file` requires three distinct parameters in this exact order:
      `edit_file(filepath="path/to/file.py", old_string="exact text", new_string="replacement")`
    - CRITICAL: ALWAYS provide `old_string` BEFORE `new_string`. NEVER emit `new_string` first.
@@ -38,6 +45,11 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
      or rewrite the target file with `write_file`.
 
 5. VERIFY & STOP.
+   - SYNTAX PRE-FLIGHT CHECK (MANDATORY):
+     Before running tests or submitting, verify every modified source file compiles cleanly:
+     `run_command(command="python -m py_compile <path/to/modified_file.py>")`
+     If `py_compile` reports `SyntaxError` or `IndentationError`, immediately fix it via the 1-strike
+     Python one-liner fallback before proceeding. Never submit code with syntax errors!
    - Re-run `python build/repro.py` or the specific test function:
      `python -m pytest tests/test_<module>.py -k "<test_name>" -x -q`
    - Ignore test collection or import errors for test helper packages; rely on your repro.
@@ -57,7 +69,7 @@ Time is strictly limited (~5 minutes per task). Work with high speed and executi
      a fatal session timeout!
 
 Operational Rules:
-- Brevity: Keep reasoning thoughts strictly under 2–3 dense sentences. State what was observed, what needs
+- Brevity: Keep reasoning thoughts strictly under 2-3 dense sentences. State what was observed, what needs
   to change, and the tool to call. Never repeat the problem statement in thoughts.
 - Pacing & Timeout Prevention:
   - Event-Driven Telemetry: Call `get_status` if your repro attempt fails on Turn 1, or after any tool error.
