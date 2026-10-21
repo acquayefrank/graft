@@ -23,10 +23,10 @@ On our 30-task development benchmark (`dev30`), Graft's paced single-agent confi
 
 Software engineering requires multi-hop reasoning, deep semantic code navigation, and precise syntactic code modification. While proprietary frontier models have demonstrated notable success on benchmarks such as SWE-bench, deploying open-weight foundation models—such as the **Gemma 4** family—within autonomous developer loops introduces distinct architectural and systems challenges:
 
-1. **The Shared Wall-Clock Horizon**: In competitive evaluation environments (such as the Google Gemma 4 Developer Agent competition on Kaggle), an agent must evaluate approximately 120 hidden software issues within a shared 12-hour global session. Accounting for per-task sandbox provisioning and editable wheel installations, the average task can allocate at most **4.5 to 5.0 minutes** of active LLM reasoning time. A single task that enters an exploratory rabbit hole directly starves subsequent tasks.
-2. **Air-Gapped Sandboxing and Strict Patch Extraction**: Agents operate in offline Docker sandboxes without PyPI access. Patches are extracted via `git add -N . && git diff HEAD` and graded in a clean verification container against hidden unit tests. Any untracked scratch script created in `/workspace` is automatically bundled into the submission patch, causing verification failure.
-3. **Reasoning Token Latency Trade-Offs**: Gemma 4's native thinking capability (`<|channel>thought...<channel|>`) provides powerful step-by-step problem decomposition. However, unconstrained thinking blocks (e.g., 2,048–4,096 tokens) consume 20–40 seconds of generation time per turn, limiting the agent to fewer than 15–20 total turns before the 5.0-minute ceiling is breached.
-4. **Context Window Degradation**: As exploratory `grep` and file-reading outputs accumulate in the conversation history, the effective working window degrades, increasing the likelihood of hallucinated line numbers and invalid edit hunks.
+1. **The Shared Wall-Clock Horizon**: In competitive SWE-bench evaluations on Kaggle, an agent must evaluate ~120 hidden issues within a shared 12-hour global session. Accounting for container provisioning and editable wheel installs, each task can allocate at most **4.5 to 5.0 minutes** of active LLM reasoning time; exploratory rabbit holes directly starve subsequent tasks.
+2. **Air-Gapped Sandboxing and Strict Patch Extraction**: Agents operate in offline sandboxes without internet. Patches are extracted via `git add -N . && git diff HEAD` and evaluated in a separate container; untracked scratch scripts in `/workspace` pollute the submission diff and cause automatic grading failure.
+3. **Reasoning Token Latency Trade-Offs**: Gemma 4's native thinking (`<|channel>thought...<channel|>`) enables deep problem decomposition. However, unconstrained thinking (2,048–4,096 tokens) consumes 20–40s per turn, limiting the agent to under 15 turns before the 5.0-minute limit expires.
+4. **Context Window Degradation**: As exploratory grep and file outputs accumulate, the active window degrades, increasing hallucinated line numbers and invalid edit hunks.
 
 In this paper, we document the empirical evolution of **Graft**, analyzing why standard agent workflows fail on open models and presenting a robust, declarative agent architecture that balances reasoning depth with execution velocity.
 
@@ -78,6 +78,15 @@ Graft interacts with the container environment through 9 registered tools:
 2. **Minute 3.5 Operational Ceiling**: If active session time exceeds 210 seconds, the agent halts localization, applies its best candidate patch, verifies git status, and calls `submit_patch()`.
 3. **Workspace Isolation via `build/repro.py`**: All temporary scripts are restricted to `build/repro.py`, which is excluded from git staging by the harness bootstrap, preventing diff contamination.
 
+### 2.4 Boundary Crossings and Data Contracts
+An autonomous coding agent operates across three distinct system boundaries, each governed by strict serialization schemas and evaluation invariants:
+
+1. **The Task Context Boundary**: At Step 0, the session orchestrator initializes Container A with a structured context packet comprising: (a) verbatim problem statement text extracted from the target GitHub issue; (b) the repository workspace mounted at `/workspace` pinned to its `base_commit`; (c) OpenAPI-conforming JSON schemas for the 9 registered tools; and (d) environment variables defining execution limits (`SWE_BENCH_TASK_ID`, Python virtualenv path).
+2. **The Tool Serialization Boundary**: Gemma 4 emits tool invocations using native channel delimiters (`<|channel>call...<channel|>`). For `edit_file`, the harness enforces a 3-argument schema: `filepath`, `old_string`, and `new_string`. To prevent token concatenation errors where commas or quotes in docstrings cause the model to emit `,old_string:` inside a parameter scalar, prompts mandate providing `old_string` strictly before `new_string`. If an edit invocation fails, a **1-strike fallback rule** mandates applying modifications via bash one-liners (`python -c "..."`) to eliminate multi-turn syntax retries.
+3. **The Container B Verification Sandbox Boundary**: When the agent executes `submit_patch()`, the runner executes `git add -N . && git diff HEAD` and transmits the unified diff into an isolated, clean verification container (Container B).
+   - *Test-Stripping Invariant*: Container B automatically strips and discards all diff hunks touching test directories (`tests/`, `testing/`, `*_test.py`) or test configuration files (`conftest.py`, `pytest.ini`, `setup.cfg`, `tox.ini`) to prevent test modification exploits.
+   - *Scoring Criteria*: Container B applies the sanitized patch against a pristine snapshot using a 4-pass engine (`git apply` $\to$ `patch -p1` $\to$ `patch -p0` $\to$ `patch -p2`), executes `py_compile` syntax validation, and runs the SWE-bench test suite: all `FAIL_TO_PASS` hidden unit tests must pass, and zero existing `PASS_TO_PASS` tests may regress. Patches failing syntax, failing application, or modifying test files exclusively are scored as 0.0.
+
 ---
 
 ## 3. Empirical Evaluation & Architecture Ablations
@@ -109,16 +118,16 @@ To rigorously assess whether context compaction through sub-agent delegation out
 
 | Task ID | Repository | Complexity | Baseline | `recovered_v2` (Single-Agent) | `subagent_v1` (Sub-Agent) | Sub-Agent Invocations & Trace Diagnostic |
 | :--- | :--- | :--- | :--- | :--- | :--- | :--- |
-| `rich_3278` | `rich` | tiny (1L) | TIMEOUT | **RESOLVED (262.2s)** | FAIL (292.4s) | 0 sub-calls; test assertion mismatch on ANSI escapes |
-| `rich_3470` | `rich` | tiny (2L) | TIMEOUT | **RESOLVED (209.7s)** | TIMEOUT (369.1s) | **6 sub-calls (29 steps)**; delegation thrashing in `console.py` |
-| `rich_3676` | `rich` | small (13L) | FAIL | **RESOLVED (186.1s)** | **RESOLVED (252.7s)** | 2 sub-calls (14 steps); clean multi-file exception fix |
-| `rich_4076` | `rich` | small (6L) | FAIL | FAIL (150.2s) | TIMEOUT (368.6s) | 2 sub-calls (41 steps); broad search consumed 100s |
-| `rich_3052` | `rich` | medium (34L)| FAIL | FAIL (227.4s) | FAIL (369.3s) | 0 sub-calls; single assertion error in `Prompt.ask` |
-| `fastapi_13920` | `fastapi` | tiny (4L) | TIMEOUT | FAIL (369.0s) | TIMEOUT (376.6s) | 2 sub-calls (24 steps); recursion in PEP 695 type hints |
-| `fastapi_14301` | `fastapi` | tiny (5L) | RESOLVED | **RESOLVED (97.3s)** | **RESOLVED (180.1s)** | 1 sub-call (4 steps); targeted `get_dependant` lookup |
-| `fastapi_14077` | `fastapi` | small (11L) | FAIL | **RESOLVED (78.4s)** | **RESOLVED (187.0s)** | 0 sub-calls; direct route consistency edit |
-| `fastapi_14458` | `fastapi` | small (7L) | RESOLVED | **RESOLVED (188.4s)** | **RESOLVED (296.9s)** | 1 sub-call (5 steps); located coroutine callable |
-| `fastapi_15588` | `fastapi` | medium (23L)| FAIL | FAIL (133.3s) | FAIL (293.9s) | 0 sub-calls; SSE regex pattern deviation |
+| `rich_3278` | `rich` | tiny (1L) | TIMEOUT | **RESOLVED (262.2s)** | FAIL (292.4s) | 0 sub-calls; ANSI escape mismatch |
+| `rich_3470` | `rich` | tiny (2L) | TIMEOUT | **RESOLVED (209.7s)** | TIMEOUT (369.1s) | **6 sub-calls**; delegation thrashing |
+| `rich_3676` | `rich` | small (13L) | FAIL | **RESOLVED (186.1s)** | **RESOLVED (252.7s)** | 2 sub-calls; clean multi-file fix |
+| `rich_4076` | `rich` | small (6L) | FAIL | FAIL (150.2s) | TIMEOUT (368.6s) | 2 sub-calls; search loop timeout |
+| `rich_3052` | `rich` | medium (34L)| FAIL | FAIL (227.4s) | FAIL (369.3s) | 0 sub-calls; Prompt.ask assertion |
+| `fastapi_13920` | `fastapi` | tiny (4L) | TIMEOUT | FAIL (369.0s) | TIMEOUT (376.6s) | 2 sub-calls; PEP 695 recursion |
+| `fastapi_14301` | `fastapi` | tiny (5L) | RESOLVED | **RESOLVED (97.3s)** | **RESOLVED (180.1s)** | 1 sub-call; targeted symbol lookup |
+| `fastapi_14077` | `fastapi` | small (11L) | FAIL | **RESOLVED (78.4s)** | **RESOLVED (187.0s)** | 0 sub-calls; direct route edit |
+| `fastapi_14458` | `fastapi` | small (7L) | RESOLVED | **RESOLVED (188.4s)** | **RESOLVED (296.9s)** | 1 sub-call; located callable |
+| `fastapi_15588` | `fastapi` | medium (23L)| FAIL | FAIL (133.3s) | FAIL (293.9s) | 0 sub-calls; SSE regex deviation |
 | **`dev10` Total** | — | — | **3 / 10 (30.0%)** | **6 / 10 (60.0%)** | **4 / 10 (40.0%)** | **Latency: 229.1s vs. 298.7s (+69.6s)** |
 
 Detailed data and metric definitions are documented in [`paper/tables/architecture_ablation.md`](file:///c:/Users/acquayefrank/Code/graft/paper/tables/architecture_ablation.md).
@@ -129,31 +138,44 @@ Detailed data and metric definitions are documented in [`paper/tables/architectu
 
 To understand remaining boundaries and inform future agent design, we categorized all 14 failed tasks in the `dev30` benchmark under `recovered_v2` into a structured failure taxonomy:
 
-| Failure Category | Primary Mechanism | Dev30 Frequency | Exemplar Tasks | Root Cause Analysis | Mitigation Impact |
+| Failure Category | Primary Mechanism | Dev30 Rate | Exemplar Tasks | Root Cause Summary | Pacing & Tool Mitigation |
 | :--- | :--- | :--- | :--- | :--- | :--- |
-| **I. Scale Horizon Timeout** | Diff volume exceeds single-turn editing capacity under budget | **6 / 14 (42.9%)** | `rich_3061` (134L)<br>`rich_4070` (88L)<br>`fastapi_14419` (102L)<br>`rich_3930` (176L)<br>`fastapi_15661` (155L) | Multi-site refactoring across 3+ files exhausts the operational budget during symbol mapping before all edit hunks can be synthesized. | Pacing ceiling ensures clean session exit, preventing unbounded hangs. |
-| **II. Partial Patch / Tool Parameter Mangling** | Token concatenation corrupts JSON parameters, forcing fallback to crude regex | **4 / 14 (28.6%)** | `rich_4076` (6L)<br>`rich_3052` (34L)<br>`rich_3675` (18L)<br>`fastapi_15588` (23L) | Across `rich_4076`, `3052`, and `3675`, 39 consecutive `edit_file` calls failed as docstrings with parentheses and quotes caused the model to emit `,old_string:` inside text scalars, dropping mandatory parameters. Panicked fallbacks to `sed -i` broke secondary assertions. In `fastapi_15588`, the agent sanitized `\n` but missed `\r` carriage returns. | Mandatory 1-strike fallback to Python one-liners via `run_command` prevents turn wasting; strict `old_string`-first parameter ordering eliminates JSON key corruption. |
-| **III. Harness Deadlock & Turn Blindness** | Protocol violation after submission or unbounded repro-thrashing from lack of temporal grounding | **4 / 14 (28.6%)** | `fastapi_13920` (4L)<br>`rich_3063` (2L)<br>`rich_3935` (7L)<br>`rich_3938` (28L) | In `fastapi_13920`, a valid 1566-byte patch was submitted at Turn 37, but the agent emitted `submit_patch()` tool calls for 36 consecutive turns, violating the harness termination contract (`not has_function_call`) until timing out at 6.0m. In `rich_3063` and `3935`, turn blindness (0/30 tasks heeded turn-based prompts) caused 15+ turns of repro rewriting without ever touching library source. | Mandatory Clean-Exit protocol (text-only final turn with zero tool calls) guarantees clean harness exit; event-driven telemetry checkpoints replace ineffective turn counts. |
+| **I. Scale Horizon Timeout** | Multi-file edits exceed single-turn capacity | **42.9% (6/14)** | `rich_3061`, `rich_4070`, `fastapi_14419`, `rich_3930` | Cross-file symbol refactoring exhausts time before edit hunks can be generated. | Operational time ceiling forces clean exit to preserve global session quota. |
+| **II. Tool Parameter Mangling** | Token concatenation corrupts JSON parameters | **28.6% (4/14)** | `rich_4076`, `rich_3052`, `rich_3675`, `fastapi_15588` | Quotes and parentheses in docstrings cause model to emit `,old_string:` inside text scalars. | 1-strike fallback to bash Python one-liners (`python -c "..."`); strict parameter ordering. |
+| **III. Harness Deadlock & Turn Blindness** | Post-submission tool calls or repro loops | **28.6% (4/14)** | `fastapi_13920`, `rich_3063`, `rich_3935`, `rich_3938` | Emitting tools after submission blocks runner exit; models cannot count turns. | Mandatory Clean-Exit protocol (`has_function_call=False`); event-driven telemetry triggers. |
 
 Complete post-mortem details are provided in [`paper/tables/failure_taxonomy.md`](file:///c:/Users/acquayefrank/Code/graft/paper/tables/failure_taxonomy.md).
 
 ### 4.1 The 15-Line Competence Boundary
 When breaking down task performance by ground-truth diff size, a striking phase transition emerges:
-- **Tiny Tasks (1–5 lines)**: **10 / 12 resolved (83.3%)**
-- **Small Tasks (6–15 lines)**: **6 / 8 resolved (75.0%)**
-- **Combined (1–15 lines)**: **16 / 20 resolved (80.0%)** with mean latency of **184.6s**.
-- **Medium, Large, & Huge Tasks (> 15 lines)**: **0 / 10 resolved (0.0%)**.
+
+| Patch Complexity Bucket | Ground-Truth Lines | Tasks Evaluated | Resolved Tasks | Resolution Rate | Mean Latency | Primary Failure Mode |
+| :--- | :--- | :--- | :--- | :--- | :--- | :--- |
+| **Tiny** | 1–5 lines | 12 | **10** | **83.3%** | 172.4s | Termination Deadlock (1), Repro Thrashing (1) |
+| **Small** | 6–15 lines | 8 | **6** | **75.0%** | 204.8s | Repro Thrashing (1), Tool Mangling (1) |
+| **Combined (1–15L)** | **1–15 lines** | **20** | **16** | **80.0%** | **184.6s** | **80.0% Production Baseline** |
+| **Medium** | 16–50 lines | 5 | 0 | 0.0% | 311.2s | Tool Parameter Mangling (3), Scale Timeout (2) |
+| **Large & Huge** | > 50 lines | 5 | 0 | 0.0% | 360.0s | Scale Horizon Timeout (5) |
+| **Overall Dev30** | — | **30** | **16** | **53.3%** | **229.1s** | **Projected 7.64h for 120 Tasks** |
 
 Below 15 lines, Gemma 4 31B equipped with Graft's pacing and tools is exceptionally capable, resolving 4 out of 5 real-world issues. Beyond 15 lines, cognitive drift across multi-file edits and turn-latency ceilings dominate, requiring decomposed multi-pass planning.
 
 ### 4.2 Micro-Architectural Failure Modes in Open-Weight Tool Use
 Granular trace post-mortems across failed tasks uncovered three unexpected failure modes at the intersection of open-weight LLMs and execution harnesses:
 
-1. **The Termination Deadlock**: In `fastapi_13920` (4 lines ground-truth), the agent correctly repaired `fastapi/_compat/shared.py`, verified its repro, and executed `submit_patch()` at Turn 37. However, the evaluation harness required a completion turn containing text with zero tool calls (`not has_function_call and context.patch_submitted`). Because the agent generated `submit_patch()` tool calls alongside conversational completion text, the runner remained active for 36 redundant turns until killed by the 6.0-minute container timeout. Open-weight agent prompts must explicitly enforce a text-only terminal turn.
+1. **The Termination Deadlock**: In `fastapi_13920` (4 lines ground-truth), the agent correctly repaired `fastapi/_compat/shared.py`, verified its repro, and executed `submit_patch()` at Turn 37. However, the evaluation harness required a completion turn containing text with zero tool calls (`not has_function_call and context.patch_submitted`). Because the agent generated `submit_patch()` tool calls alongside completion text, the runner remained active for 36 redundant turns until killed by the 6.0-minute timeout. Prompts must strictly enforce a text-only terminal turn.
 
-2. **Tool Parameter Serialization Fragility**: Across `rich_4076`, `rich_3052`, and `rich_3675`, the agent experienced 39 consecutive `edit_file` failures due to token-level argument concatenation. When modifying docstrings with parentheses, quotes, and newlines, Gemma 4 emitted argument keys (e.g., `,old_string:`) directly inside the string scalar, dropping mandatory input parameters. Panicked fallbacks to shell `sed -i` commands subsequently broke secondary test assertions. Providing a 1-strike fallback to deterministic Python one-liners via bash (`python -c "..."`) is essential to prevent turn-wasting error cascades.
+2. **Tool Parameter Serialization Fragility**: Across `rich_4076`, `rich_3052`, and `rich_3675`, the agent experienced 39 consecutive `edit_file` failures due to token-level argument concatenation. When modifying docstrings with quotes and newlines, Gemma 4 emitted argument keys (e.g., `,old_string:`) inside text scalars, dropping mandatory parameters. Fallbacks to `sed -i` broke secondary assertions. A deterministic 1-strike fallback to Python one-liners (`python -c "..."`) is essential to prevent turn-wasting error cascades.
 
 3. **Temporal Blindness and Repro Thrashing**: Turn-based pacing instructions (e.g. "check status at Turn 10") failed completely: across 30 tasks, `get_status` was called 0 times. Without internal temporal grounding, models in `rich_3063` and `rich_3935` spent 15+ turns rewriting non-reproducing test scripts without touching source code. Grounding telemetry checks in concrete failure events (such as a failed initial repro attempt) eliminates this blindness.
+
+| Operational Failure Mode | Root Trigger | Observed Frequency | Deployed Architectural Mitigation |
+| :--- | :--- | :--- | :--- |
+| **Tool Argument Mangling** | Token concatenation in multiline docstrings (`...,old_string:`) | 39 calls across 3 tasks | Strict `old_string`-first parameter ordering; 1-strike fallback to bash Python one-liners (`python -c "..."`). |
+| **Runner Termination Deadlock** | Emitting `submit_patch()` tool call with completion text | 36 redundant turns (`fastapi_13920`) | Clean-Exit protocol: text-only final turn with zero tool calls (`not has_function_call`) immediately upon submission. |
+| **Infinite Repro Loop** | Unbounded reproduction script for hang/freeze bugs | 2 tasks (`rich_3935`, `3063`) | Mandatory `timeout 5 python build/repro.py` shell wrapper. |
+| **Perfectionist Hesitation** | Continued exploration after repro passes | 3 tasks in dev runs | Mandatory Stop-and-Submit rule: halt all reading the instant reproduction script passes. |
+| **Test Tampering / Diff Leak** | Scratchpad scripts or edits to test files | Baseline 43% timeout / fail | `build/` exclusion in `.git/info/exclude`; Container B automatic test-stripping invariant. |
 
 ---
 
@@ -163,14 +185,13 @@ The comparative evaluation of `recovered_v2` and `subagent_v1` yields a critical
 
 ### 5.1 The Context Compaction Win
 In modular repositories with well-defined interface boundaries (such as `fastapi/fastapi`), sub-agent delegation operated as intended:
-- On tasks `fastapi_14301` and `fastapi_14458`, `code_analyzer` executed targeted code graph traversals in an isolated context, returning concise symbol definitions (e.g. `is_coroutine_callable`) in a single markdown block.
-- Root context growth decreased by ~79% per exploratory turn, preserving > 22,000 tokens of working context for subsequent `edit_file` operations.
+On `fastapi_14301` and `14458`, `code_analyzer` executed targeted graph traversals in an isolated context, returning concise definitions in a single block. Root context growth decreased by ~79% per exploratory turn, preserving > 22,000 tokens of working context.
 
 ### 5.2 The Turn-Latency Overhead & Delegation Thrashing
 However, on open-ended or tightly coupled codebases (such as `Textualize/rich`), delegation introduced severe pathologies:
-1. **Delegation Thrashing**: In `rich_3470`, the root agent successfully reproduced the bug at Turn 36 (225s), but instead of executing the fix, it issued **6 consecutive delegations** to `code_analyzer` to locate methods within an already-known file (`rich/console.py`), burning through the global session timeout without submitting.
-2. **Search Loop Traps**: In `rich_4076`, a broad natural language request caused `code_analyzer` to execute 27 internal tool calls across 6 files, consuming 100 seconds of compute before returning a response.
-3. **Latency Inflation**: Each sub-agent call incurs at least one additional LLM forward pass (~10–14s on 4x L4 GPUs). Across 10 tasks, mean latency increased from **229.1s** to **298.7s**, driving projected 120-task runtime from **7.64 hours** to **9.96 hours** and degrading resolution from 60.0% to 40.0%.
+1. **Delegation Thrashing**: In `rich_3470`, after reproducing the bug at Turn 36, the agent issued 6 redundant delegations to locate methods in an already-identified file (`rich/console.py`), timing out without submitting.
+2. **Search Loop Traps**: In `rich_4076`, broad search caused `code_analyzer` to execute 27 tool calls across 6 files, consuming 100s of compute.
+3. **Latency Inflation**: Each sub-agent call incurs an additional forward pass (~10–14s on 4x L4 GPUs), increasing mean latency from 229.1s to 298.7s and degrading resolution from 60.0% to 40.0%.
 
 **Design Implication**: For time-bounded competitive benchmarks, a tightly paced single-agent equipped with direct AST/graph tools is strictly superior to unconstrained multi-agent delegation. Sub-agents should only be deployed with strict delegation quotas (e.g., maximum 1 call per task) or on explicitly partitioned subtasks.
 

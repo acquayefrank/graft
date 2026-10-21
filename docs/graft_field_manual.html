@@ -321,12 +321,23 @@ dl.glossary dd { margin: 0; color: var(--ink-2); }
     </table>
   </div>
 
-  <h3>The Dual-Container Lifecycle</h3>
-  <p>The evaluation harness (<span class="g" data-g="swegemma" tabindex="0">swegemma</span>) executes a strict two-phase containerized lifecycle:</p>
+  <h3>The Dual-Container Lifecycle & Boundary Crossings</h3>
+  <p>The evaluation harness (<span class="g" data-g="swegemma" tabindex="0">swegemma</span>) executes a strict two-phase containerized lifecycle governed by explicit serialization contracts:</p>
   <ul>
     <li><b>Phase 1 (Container A - Agent Sandbox):</b> Agent starts in <code>/workspace</code> at the baseline git commit. The agent uses 9 sandboxed tools to read files, run bash commands, edit code, and call <code>submit_patch()</code>.</li>
     <li><b>Phase 2 (Container B - Verification Sandbox):</b> A pristine container extracts <code>agent_patch</code> from Container A, strips edits to protected test directories (e.g. <code>tests/</code>, <code>conftest.py</code>), applies the patch using a 4-pass fallback engine, applies the hidden ground-truth <code>test_patch</code>, and runs <code>pytest</code> with JUnit XML scoring.</li>
   </ul>
+
+  <div class="facets">
+    <div class="facet" style="--c: var(--accent)">
+      <span class="label">Context Packet (Step 0)</span>
+      <p>Container A receives: verbatim GitHub problem statement, offline filesystem mounted at <code>/workspace</code> pinned to <code>base_commit</code>, OpenAPI JSON schemas for the 9 tools, and runtime environment variables (<code>SWE_BENCH_TASK_ID</code>, virtualenv).</p>
+    </div>
+    <div class="facet" style="--c: var(--p-pace)">
+      <span class="label">Container B Rejection Rules</span>
+      <p>Patches are automatically rejected with score <b>0.0</b> if they: (1) fail <code>py_compile</code> syntax checks; (2) fail 4-pass <code>patch -p1</code> application; (3) modify test files exclusively; or (4) break existing <code>PASS_TO_PASS</code> regression tests.</p>
+    </div>
+  </div>
   <div class="quiz">
     <div class="label">Check yourself</div>
     <div class="q" data-answer="b">
@@ -401,6 +412,13 @@ dl.glossary dd { margin: 0; color: var(--ink-2); }
       <tr><td><code>get_status</code></td><td>Telemetry</td><td><b>No (Free)</b></td><td>Returns elapsed seconds, remaining seconds, tool calls, and turns.</td></tr>
       <tr><td><code>submit_patch</code></td><td>Lifecycle</td><td><b>No (Free)</b></td><td>Runs <code>git add -N . && git diff HEAD</code> and captures the patch.</td></tr>
     </table>
+  </div>
+
+  <div class="project" style="--c: var(--p-arch)">
+    <span class="label">Tool Contract Hazard: Parameter Mangling & 1-Strike Fallback</span>
+    <p><code>edit_file</code> requires three strictly ordered arguments: <code>filepath</code>, <code>old_string</code>, and <code>new_string</code>. In our dev runs, multiline docstrings containing parentheses and quotes caused Gemma 4 to emit argument keys like <code>,old_string:</code> inside the string scalar, triggering 39 consecutive failed tool calls.</p>
+    <p><b>The 1-Strike Rule:</b> If <code>edit_file</code> fails even once, the agent is barred from retrying <code>edit_file</code> and must immediately apply the fix using a deterministic Python one-liner via <code>run_command</code>:</p>
+    <pre><code>python -c "p = open('path/to/file.py').read(); open('path/to/file.py', 'w').write(p.replace('''OLD''', '''NEW'''))"</code></pre>
   </div>
   <div class="chapter-foot">
     <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
@@ -567,6 +585,18 @@ dl.glossary dd { margin: 0; color: var(--ink-2); }
     <span class="label">4. Single-Character Omission (`fastapi_15588`)</span>
     <p><b>What happened:</b> The agent fixed SSE newline splitting by checking <code>if "\n" in value:</code>. Hidden unit tests also passed carriage returns (<code>\r</code> and <code>\r\n</code>), failing assertion.</p>
     <p><b>Lesson:</b> Pre-flight syntax and edge-case testing prevents single-character test failures.</p>
+  </div>
+
+  <h3>Operational Failure Mitigation Matrix</h3>
+  <div class="tbl">
+    <table>
+      <tr><th>Operational Failure Mode</th><th>Root Trigger</th><th>Observed Frequency</th><th>Deployed Architectural Mitigation</th></tr>
+      <tr><td><b>Tool Argument Mangling</b></td><td>Token concatenation in docstrings (<code>...,old_string:</code>)</td><td>39 calls across 3 tasks</td><td>Strict <code>old_string</code>-first parameter ordering; 1-strike fallback to bash Python one-liners (<code>python -c "..."</code>).</td></tr>
+      <tr><td><b>Runner Termination Deadlock</b></td><td>Emitting <code>submit_patch()</code> tool call with text</td><td>36 redundant turns (<code>fastapi_13920</code>)</td><td>Clean-Exit protocol: text-only final turn with zero tool calls (<code>not has_function_call</code>) immediately upon submission.</td></tr>
+      <tr><td><b>Infinite Repro Loop</b></td><td>Unbounded reproduction script for hang/freeze bugs</td><td>2 tasks (<code>rich_3935</code>, <code>3063</code>)</td><td>Mandatory <code>timeout 5 python build/repro.py</code> shell wrapper.</td></tr>
+      <tr><td><b>Perfectionist Hesitation</b></td><td>Continued exploration after repro passes</td><td>3 tasks in dev runs</td><td>Mandatory Stop-and-Submit rule: halt all reading the instant reproduction script passes.</td></tr>
+      <tr><td><b>Test Tampering / Diff Leak</b></td><td>Scratchpad scripts or edits to test files</td><td>Baseline 43% timeout / fail</td><td><code>build/</code> exclusion in <code>.git/info/exclude</code>; Container B automatic test-stripping invariant.</td></tr>
+    </table>
   </div>
   <div class="chapter-foot">
     <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
