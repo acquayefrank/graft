@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>The Graft Field Manual: Autonomous Software Engineering with Gemma 4</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Literata:ital,opsz,wght@0,7..72,400;0,7..72,600;1,7..72,400&family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap">
+<style>
+:root {
+  --paper: #f8f9fa;
+  --sheet: #ffffff;
+  --ink: #161c1b;
+  --ink-2: #485754;
+  --ink-3: #758682;
+  --rule: #dce3e0;
+  --tint: #eef3f1;
+  --accent: #026e5b;          /* Graft Pine */
+  --accent-ink: #ffffff;
+  --p-arch: #1d5ca8;          /* Part I: Architecture */
+  --p-pace: #b05700;          /* Part II: Pacing & Discipline */
+  --p-eval: #026e5b;          /* Part III: Empirical Findings */
+  --p-post: #a6284f;          /* Part IV: Post-Mortems */
+  --p-lb: #543bb0;            /* Part V: Leaderboard & Strategy */
+  --good: #1a7d3c;
+  --bad: #b5251c;
+  --warn: #c47d00;
+  --code-bg: #eef2f0;
+  --font-display: "Instrument Sans", system-ui, -apple-system, sans-serif;
+  --font-body: "Literata", Georgia, serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --paper: #101514; --sheet: #171f1e; --ink: #e3ebe8; --ink-2: #a7b7b2; --ink-3: #778783;
+    --rule: #293634; --tint: #1c2725; --accent: #4ec2b0; --accent-ink: #0d1514;
+    --p-arch: #7aa5ee; --p-pace: #e59f42; --p-eval: #4ec2b0; --p-post: #e4789b; --p-lb: #a496f2;
+    --good: #57cf79; --bad: #f0857a; --warn: #ebb44d; --code-bg: #0c1211;
+    color-scheme: dark;
+  }
+}
+* { box-sizing: border-box; }
+html { scroll-padding-top: 72px; scroll-behavior: smooth; }
+body { margin: 0; padding: 0; background: var(--paper); color: var(--ink); font: 17px/1.65 var(--font-body); }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, .g:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px;
+}
+h1, h2, h3, h4 { font-family: var(--font-display); line-height: 1.25; margin: 0; }
+p { margin: 0 0 0.95em; }
+code, kbd, .mono { font-family: var(--font-mono); font-size: 0.88em; }
+code { background: var(--code-bg); padding: 0.1em 0.35em; border-radius: 4px; }
+pre { font: 0.84rem/1.55 var(--font-mono); background: var(--code-bg); padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 0 0 1em; }
+pre code { background: none; padding: 0; }
+.label { font: 700 0.72rem/1 var(--font-display); text-transform: uppercase; letter-spacing: 0.09em; color: var(--ink-3); }
+
+/* Top Bar */
+.topbar {
+  position: sticky; top: 0; z-index: 30;
+  background: var(--sheet); border-bottom: 1px solid var(--rule);
+  padding: 10px 24px; display: flex; align-items: center; gap: 16px;
+}
+.topbar .brand { font: 700 1.05rem/1 var(--font-display); letter-spacing: -0.01em; white-space: nowrap; }
+.topbar .brand span { color: var(--accent); }
+.topbar .search { flex: 1 1 auto; max-width: 480px; margin-left: auto; position: relative; }
+.topbar input[type="search"] {
+  width: 100%; font: 0.95rem var(--font-display); padding: 7px 12px; border-radius: 8px;
+  border: 1px solid var(--rule); background: var(--paper); color: var(--ink);
+}
+.progress { display: flex; align-items: center; gap: 8px; font: 600 0.8rem var(--font-display); color: var(--ink-2); white-space: nowrap; }
+.progress .bar { width: 90px; height: 6px; background: var(--tint); border-radius: 3px; overflow: hidden; }
+.progress .bar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.3s; }
+.menu-btn { display: none; font: 600 0.85rem var(--font-display); border: 1px solid var(--rule); background: var(--paper); color: var(--ink); border-radius: 6px; padding: 6px 10px; cursor: pointer; }
+.results {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px;
+  box-shadow: 0 12px 36px rgba(0,0,0,0.18); max-height: 60vh; overflow-y: auto; padding: 6px;
+}
+.results a { display: block; padding: 8px 10px; border-radius: 6px; text-decoration: none; color: var(--ink); }
+.results a:hover { background: var(--tint); }
+.results b { font: 600 0.92rem var(--font-display); display: block; }
+.results small { color: var(--ink-2); font-size: 0.82rem; }
+.results mark { background: color-mix(in srgb, var(--accent) 30%, transparent); color: inherit; border-radius: 2px; }
+
+/* Layout Grid */
+.shell {
+  display: grid; grid-template-columns: 290px minmax(0, 1fr); gap: 44px;
+  max-width: 1240px; margin: 0 auto; padding: 32px 24px 90px;
+}
+nav.toc { position: sticky; top: 76px; align-self: start; max-height: calc(100vh - 96px); overflow-y: auto; padding-right: 8px; font-family: var(--font-display); }
+nav.toc .part { margin: 16px 0 6px; font: 700 0.72rem/1.2 var(--font-display); text-transform: uppercase; letter-spacing: 0.09em; }
+nav.toc ol { list-style: none; margin: 0; padding: 0; display: grid; gap: 2px; }
+nav.toc a { display: flex; gap: 8px; align-items: baseline; text-decoration: none; color: var(--ink-2); font-size: 0.88rem; padding: 5px 8px; border-radius: 6px; }
+nav.toc a:hover { background: var(--tint); color: var(--ink); }
+nav.toc a.current { background: var(--tint); color: var(--ink); font-weight: 700; border-left: 3px solid var(--accent); }
+nav.toc a .n { font: 600 0.75rem var(--font-mono); color: var(--ink-3); min-width: 1.8em; }
+nav.toc a .tick { margin-left: auto; color: var(--good); font-size: 0.82rem; visibility: hidden; }
+nav.toc a.read .tick { visibility: visible; }
+
+main { min-width: 0; }
+.cover { padding: 8px 0 32px; border-bottom: 1px solid var(--rule); margin-bottom: 16px; display: grid; gap: 14px; }
+.cover h1 { font-size: clamp(2.2rem, 5vw, 3.4rem); letter-spacing: -0.025em; }
+.cover h1 em { font-style: normal; color: var(--accent); }
+.cover .lede { font-size: 1.15rem; color: var(--ink-2); max-width: 66ch; }
+.parts { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin-top: 10px; }
+.parts a { text-decoration: none; color: var(--ink); background: var(--sheet); border: 1px solid var(--rule); border-top: 3px solid var(--c); border-radius: 8px; padding: 12px 14px; display: grid; gap: 4px; }
+.parts a b { font: 700 0.95rem var(--font-display); }
+.parts a span { font-size: 0.84rem; color: var(--ink-2); line-height: 1.35; }
+
+section.chapter { padding: 48px 0 32px; border-bottom: 1px solid var(--rule); max-width: 74ch; }
+.chapter .eyebrow { font: 700 0.72rem/1 var(--font-display); letter-spacing: 0.1em; text-transform: uppercase; color: var(--c); margin-bottom: 8px; display: flex; gap: 10px; align-items: center; }
+.chapter .eyebrow .num { font-family: var(--font-mono); }
+.chapter h2 { font-size: clamp(1.7rem, 3.6vw, 2.3rem); letter-spacing: -0.02em; margin-bottom: 14px; }
+.chapter h3 { font-size: 1.25rem; margin: 30px 0 10px; }
+.chapter h4 { font-size: 1.05rem; margin: 20px 0 8px; color: var(--ink-2); }
+.chapter ul, .chapter ol { padding-left: 1.4em; margin: 0 0 1em; }
+.chapter li { margin-bottom: 0.4em; }
+.intro { font-size: 1.1rem; color: var(--ink-2); }
+
+/* The Four-Part Principle Frame */
+.facets { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; margin: 12px 0 20px; }
+.facet { background: var(--sheet); border: 1px solid var(--rule); border-radius: 8px; padding: 12px 14px; font-size: 0.93rem; }
+.facet .label { display: block; margin-bottom: 5px; color: var(--c); font-size: 0.75rem; }
+.facet p:last-child { margin-bottom: 0; }
+
+.formula { background: var(--sheet); border: 1px solid var(--rule); border-left: 3px solid var(--c); border-radius: 6px; padding: 14px 16px; margin: 0 0 1.1em; overflow-x: auto; }
+.formula .eq { font: 1rem/1.7 var(--font-mono); white-space: nowrap; }
+.formula .where { font-size: 0.88rem; color: var(--ink-2); margin-top: 6px; }
+
+.example { background: var(--tint); border-radius: 8px; padding: 14px 16px; margin: 0 0 1.1em; font-size: 0.95rem; }
+.example .label { display: block; margin-bottom: 6px; }
+.example p:last-child { margin-bottom: 0; }
+.project { border-left: 3px solid var(--c); padding: 4px 0 4px 16px; margin: 0 0 1.1em; }
+.project .label { display: block; margin-bottom: 4px; color: var(--c); }
+.pitfall { background: color-mix(in srgb, var(--bad) 8%, var(--sheet)); border: 1px solid color-mix(in srgb, var(--bad) 30%, var(--rule)); border-radius: 8px; padding: 12px 16px; margin: 0 0 1.1em; font-size: 0.95rem; }
+.pitfall .label { color: var(--bad); display: block; margin-bottom: 4px; }
+.pitfall p:last-child { margin-bottom: 0; }
+
+.tbl { overflow-x: auto; margin: 0 0 1.2em; border: 1px solid var(--rule); border-radius: 8px; background: var(--sheet); }
+table { border-collapse: collapse; width: 100%; font: 0.88rem/1.5 var(--font-display); font-variant-numeric: tabular-nums; }
+th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--rule); vertical-align: top; }
+th { font-weight: 700; color: var(--ink-2); background: var(--tint); }
+tr:last-child td { border-bottom: 0; }
+td.n, th.n { text-align: right; }
+
+/* Interactive Benches */
+.bench { background: var(--sheet); border: 1px solid var(--rule); border-radius: 12px; padding: 18px; margin: 12px 0 24px; display: grid; gap: 14px; }
+.bench header { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+.bench header h4 { margin: 0; color: var(--ink); font-size: 1.05rem; }
+.bench header .label { color: var(--c); }
+.controls { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 12px 18px; font: 0.88rem var(--font-display); }
+.controls label { display: grid; gap: 4px; color: var(--ink-2); }
+.controls output { font: 700 0.88rem var(--font-mono); color: var(--ink); }
+.controls input[type="range"] { width: 100%; accent-color: var(--c); cursor: pointer; }
+.controls select { font: 0.9rem var(--font-display); padding: 6px 10px; border-radius: 6px; border: 1px solid var(--rule); background: var(--paper); color: var(--ink); }
+.readouts { display: grid; grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px; }
+.readout { background: var(--tint); border-radius: 8px; padding: 9px 12px; display: grid; gap: 3px; }
+.readout span { font: 600 0.75rem var(--font-display); color: var(--ink-2); }
+.readout b { font: 700 1.2rem var(--font-mono); font-variant-numeric: tabular-nums; }
+.canvas-wrap { position: relative; width: 100%; }
+.canvas-wrap canvas { width: 100%; height: auto; display: block; border-radius: 8px; background: var(--paper); }
+.note { font-size: 0.85rem; color: var(--ink-2); margin-top: 2px; }
+
+/* Quizzes */
+.quiz { background: var(--sheet); border: 1px solid var(--rule); border-radius: 10px; padding: 16px 18px; margin: 20px 0 10px; display: grid; gap: 16px; }
+.quiz > .label { color: var(--c); }
+.q { display: grid; gap: 8px; }
+.q > p { font-weight: 700; font-family: var(--font-display); font-size: 0.98rem; margin: 0; }
+.q label { display: flex; gap: 10px; align-items: flex-start; font-size: 0.95rem; cursor: pointer; padding: 6px 8px; border-radius: 6px; transition: background 0.15s; }
+.q label:hover { background: var(--tint); }
+.q label.right { background: color-mix(in srgb, var(--good) 15%, transparent); font-weight: 600; }
+.q label.wrong { background: color-mix(in srgb, var(--bad) 12%, transparent); }
+.q .why { font-size: 0.92rem; color: var(--ink-2); border-left: 3px solid var(--c); padding-left: 12px; margin-top: 4px; }
+
+.chapter-foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; margin-top: 22px; flex-wrap: wrap; }
+.mark-read { font: 600 0.85rem var(--font-display); border-radius: 8px; padding: 8px 14px; cursor: pointer; border: 1px solid var(--rule); background: var(--sheet); color: var(--ink); }
+.mark-read[aria-pressed="true"] { background: color-mix(in srgb, var(--good) 15%, var(--sheet)); border-color: var(--good); color: var(--good); font-weight: 700; }
+
+/* Glossary Popups */
+.g { border-bottom: 1.5px dotted var(--ink-3); cursor: help; }
+.tip {
+  position: absolute; z-index: 50; max-width: min(360px, calc(100vw - 32px));
+  background: var(--ink); color: var(--paper); font: 0.86rem/1.45 var(--font-display);
+  padding: 10px 12px; border-radius: 8px; box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+}
+.tip b { display: block; margin-bottom: 3px; font-size: 0.92rem; }
+dl.glossary { display: grid; grid-template-columns: minmax(140px, 240px) minmax(0, 1fr); gap: 8px 20px; font-size: 0.95rem; }
+dl.glossary dt { font: 700 0.94rem var(--font-display); color: var(--ink); }
+dl.glossary dd { margin: 0; color: var(--ink-2); }
+
+@media (max-width: 900px) {
+  .shell { grid-template-columns: minmax(0, 1fr); gap: 24px; padding: 20px 16px 60px; }
+  nav.toc {
+    position: fixed; z-index: 35; inset: 56px auto 0 0; width: min(320px, 86vw); max-height: none;
+    background: var(--sheet); border-right: 1px solid var(--rule); padding: 16px 14px 40px;
+    transform: translateX(-105%); transition: transform 0.25s ease;
+  }
+  nav.toc.open { transform: none; box-shadow: 10px 0 40px rgba(0,0,0,0.25); }
+  .menu-btn { display: inline-block; }
+  .progress .bar { display: none; }
+  dl.glossary { grid-template-columns: minmax(0, 1fr); }
+  dl.glossary dd { margin-bottom: 10px; }
+}
+</style>
+</head>
+<body>
+
+<header class="topbar">
+  <button class="menu-btn" id="menu-btn" type="button" aria-expanded="false" aria-controls="toc">Contents</button>
+  <div class="brand">Project Graft <span>Field Manual</span></div>
+  <div class="search">
+    <input id="search" type="search" placeholder="Search the manual (e.g. timeout, edit_file, dev30)" aria-label="Search the manual" autocomplete="off">
+    <div class="results" id="results" hidden></div>
+  </div>
+  <div class="progress">
+    <span class="bar"><i id="prog-bar"></i></span>
+    <span id="prog-text">0 read</span>
+  </div>
+</header>
+
+<div class="shell">
+
+<nav class="toc" id="toc" aria-label="Contents">
+  <div class="part" style="color: var(--accent)">Orientation</div>
+  <ol>
+    <li><a href="#how-to-read"><span class="n">0</span><span>How to read this manual</span><span class="tick">✓</span></a></li>
+    <li><a href="#the-problem"><span class="n">1</span><span>The SWE challenge & environment</span><span class="tick">✓</span></a></li>
+  </ol>
+  <div class="part" style="color: var(--p-arch)">Part I · Architecture & Harness</div>
+  <ol>
+    <li><a href="#model-vllm"><span class="n">2</span><span>Model serving & reasoning tokens</span><span class="tick">✓</span></a></li>
+    <li><a href="#sandboxed-tools"><span class="n">3</span><span>The nine sandboxed tools</span><span class="tick">✓</span></a></li>
+    <li><a href="#compiler-schema"><span class="n">4</span><span>Declarative compiler & schema</span><span class="tick">✓</span></a></li>
+  </ol>
+  <div class="part" style="color: var(--p-pace)">Part II · Operational Discipline</div>
+  <ol>
+    <li><a href="#pacing-ceilings"><span class="n">5</span><span>Pacing envelopes & zero-timeout rule</span><span class="tick">✓</span></a></li>
+    <li><a href="#scratchpad-isolation"><span class="n">6</span><span>Scratchpad isolation & path traversal</span><span class="tick">✓</span></a></li>
+    <li><a href="#clean-exit"><span class="n">7</span><span>The clean-exit termination handshake</span><span class="tick">✓</span></a></li>
+  </ol>
+  <div class="part" style="color: var(--p-eval)">Part III · Empirical Findings</div>
+  <ol>
+    <li><a href="#subagent-ablation"><span class="n">8</span><span>Hierarchical agents vs single-agent</span><span class="tick">✓</span></a></li>
+    <li><a href="#competence-boundary"><span class="n">9</span><span>The 15-line competence boundary</span><span class="tick">✓</span></a></li>
+  </ol>
+  <div class="part" style="color: var(--p-post)">Part IV · Trace Post-Mortems</div>
+  <ol>
+    <li><a href="#post-mortems"><span class="n">10</span><span>Four critical trace post-mortems</span><span class="tick">✓</span></a></li>
+  </ol>
+  <div class="part" style="color: var(--p-lb)">Part V · Competition Strategy</div>
+  <ol>
+    <li><a href="#leaderboard-dynamics"><span class="n">11</span><span>Leaderboard dynamics & the 0.17 cluster</span><span class="tick">✓</span></a></li>
+    <li><a href="#roadmap-evolution"><span class="n">12</span><span>Roadmap & Phase 7 multi-hunking</span><span class="tick">✓</span></a></li>
+  </ol>
+  <div class="part" style="color: var(--ink-3)">Reference</div>
+  <ol>
+    <li><a href="#glossary"><span class="n">G</span><span>Glossary</span></a></li>
+  </ol>
+</nav>
+
+<main>
+
+<div class="cover">
+  <span class="label">Field Manual & Engineering Syllabus · Project Graft · 21 October 2026</span>
+  <h1>The Graft <em>Field Manual</em></h1>
+  <p class="lede">The systems architecture, operational pacing, failure taxonomies, and leaderboard strategy of an autonomous software engineering agent built on Gemma 4, taught on real execution traces, decisions, and mistakes.</p>
+  <div class="parts">
+    <a href="#model-vllm" style="--c: var(--p-arch)"><b>Architecture</b><span>Gemma 4 31B W4A16, vLLM, 4x L4 GPUs, 9 native tools</span></a>
+    <a href="#pacing-ceilings" style="--c: var(--p-pace)"><b>Operational Pacing</b><span>Stop-and-Submit, scratchpads, clean-exit handshakes</span></a>
+    <a href="#subagent-ablation" style="--c: var(--p-eval)"><b>Empirical Findings</b><span>53.3% dev30 baseline, sub-agent latency taxes, 15L boundary</span></a>
+    <a href="#post-mortems" style="--c: var(--p-post)"><b>Trace Post-Mortems</b><span>Termination deadlocks, tool mangling, temporal blindness</span></a>
+    <a href="#leaderboard-dynamics" style="--c: var(--p-lb)"><b>Leaderboard Strategy</b><span>The 541-team 0.17 tie, quota resets, and Phase 7 multi-hunking</span></a>
+  </div>
+</div>
+
+<!-- CHAPTER 00 -->
+<section class="chapter" id="how-to-read" data-track="1" data-title="How to read this manual" style="--c: var(--accent)">
+  <div class="eyebrow"><span class="num">00</span> Orientation</div>
+  <h2>How to read this manual</h2>
+  <p class="intro">This manual explains how Project Graft engineers an autonomous software engineering agent for the Kaggle Google Gemma 4 Developer Agent competition. Every concept is grounded in the project's actual source code, commit history, raw evaluation traces, and hard-learned failures.</p>
+
+  <h3>How each principle is laid out</h3>
+  <div class="facets">
+    <div class="facet"><span class="label">The Idea</span><p>What the engineering principle is in SWE-bench loops, with systems rationale.</p></div>
+    <div class="facet"><span class="label">In Graft</span><p>Where the project implements it in YAML, Python, prompts, or bash scripts.</p></div>
+    <div class="facet"><span class="label">Why this choice</span><p>What it buys on the Kaggle L4 GPU cluster vs the rejected alternatives.</p></div>
+    <div class="facet"><span class="label">Limits</span><p>Where the mechanism breaks down and how we mitigate it.</p></div>
+  </div>
+
+  <h3>Interactive Features</h3>
+  <ul>
+    <li><b>Benches:</b> Live simulation panels. Move the sliders to test turn latencies, queue mechanics, and leaderboard score projections.</li>
+    <li><b>Dotted Terms:</b> Technical terms like <span class="g" data-g="swe-bench" tabindex="0">SWE-bench</span> or <span class="g" data-g="atif" tabindex="0">ATIF</span> show inline definitions on hover or tap.</li>
+    <li><b>Check Yourself:</b> Self-test quizzes at the end of each chapter with immediate feedback.</li>
+    <li><b>Search (Top Bar):</b> Instantly searches all text, code snippets, and failure post-mortems.</li>
+  </ul>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#the-problem">Next: The SWE challenge & environment →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 01 -->
+<section class="chapter" id="the-problem" data-track="1" data-title="The SWE challenge & environment" style="--c: var(--accent)">
+  <div class="eyebrow"><span class="num">01</span> Orientation</div>
+  <h2>The SWE challenge & environment</h2>
+  <p class="intro">The Google Gemma 4 Developer Agent Competition evaluates agents against real-world GitHub issues across Python repositories (e.g. <code>Textualize/rich</code>, <code>fastapi/fastapi</code>). The agent operates completely offline in Docker containers, generating unified git diffs that must pass hidden unit tests.</p>
+
+  <h3>The Core Constraints</h3>
+  <div class="tbl">
+    <table>
+      <tr><th>Constraint</th><th class="n">Value</th><th>Engineering Impact</th></tr>
+      <tr><td>Evaluation Tasks</td><td class="n">~120 tasks</td><td>Evaluated sequentially in a shared 12-hour session</td></tr>
+      <tr><td>Per-Task Time Budget</td><td class="n">~5.0 minutes</td><td>Average active LLM reasoning time allowed per issue</td></tr>
+      <tr><td>Compute Hardware</td><td class="n">4x NVIDIA L4</td><td>96 GB total VRAM; requires Tensor Parallelism = 4</td></tr>
+      <tr><td>Base Model Checkpoint</td><td class="n">31B INT4</td><td><code>gemma-4-31b-it-qat-w4a16-ct</code> (16–18 GB weight VRAM)</td></tr>
+      <tr><td>Network Connectivity</td><td class="n">Air-gapped</td><td>Zero internet access; no <code>pip install</code> or external APIs</td></tr>
+      <tr><td>Submission Manifest</td><td class="n">&lt; 100 KB target</td><td>Strictly declarative YAML and Markdown prompts (<span class="g" data-g="adk" tabindex="0">ADK</span>)</td></tr>
+    </table>
+  </div>
+
+  <h3>The Dual-Container Lifecycle</h3>
+  <p>The evaluation harness (<span class="g" data-g="swegemma" tabindex="0">swegemma</span>) executes a strict two-phase containerized lifecycle:</p>
+  <ul>
+    <li><b>Phase 1 (Container A - Agent Sandbox):</b> Agent starts in <code>/workspace</code> at the baseline git commit. The agent uses 9 sandboxed tools to read files, run bash commands, edit code, and call <code>submit_patch()</code>.</li>
+    <li><b>Phase 2 (Container B - Verification Sandbox):</b> A pristine container extracts <code>agent_patch</code> from Container A, strips edits to protected test directories (e.g. <code>tests/</code>, <code>conftest.py</code>), applies the patch using a 4-pass fallback engine, applies the hidden ground-truth <code>test_patch</code>, and runs <code>pytest</code> with JUnit XML scoring.</li>
+  </ul>
+  <div class="quiz">
+    <div class="label">Check yourself</div>
+    <div class="q" data-answer="b">
+      <p>Why are edits to <code>tests/</code> or <code>pytest.ini</code> stripped in Container B?</p>
+      <label><input type="radio" name="q1-0" value="a"><span>To reduce git diff size</span></label>
+      <label><input type="radio" name="q1-0" value="b"><span>To prevent an agent from "passing" by deleting or disabling the grading tests</span></label>
+      <label><input type="radio" name="q1-0" value="c"><span>Because Docker sandboxes cannot execute pytest</span></label>
+      <div class="why" hidden>In SWE-bench evaluation, an agent must fix the library source code. Stripping test edits prevents trivial hacking of the test suite.</div>
+    </div>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#model-vllm">Next: Model serving & reasoning tokens →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 02 -->
+<section class="chapter" id="model-vllm" data-track="1" data-title="Model serving & reasoning tokens" style="--c: var(--p-arch)">
+  <div class="eyebrow"><span class="num">02</span> Part I · Architecture & Harness</div>
+  <h2>Model serving & reasoning tokens</h2>
+  <p class="intro">Running Gemma 4 31B inside an offline competition requires balancing model quantization, KV-cache utilization, and reasoning token budgets to prevent forward-pass latency from breaching task time ceilings.</p>
+
+  <h3>Model Quantization: W4A16 QAT</h3>
+  <p>Unquantized Gemma 4 31B (bfloat16) requires ~62 GB of VRAM just to hold model weights. On 4x NVIDIA L4 GPUs (24 GB each, 96 GB total), unquantized weights leave minimal room for KV-cache under 32k context lengths.</p>
+  <div class="project">
+    <span class="label">In Graft</span>
+    <p>We deploy <code>gemma-4-31b-it-qat-w4a16-ct</code> (Quantization-Aware Trained 4-bit integer weights with 16-bit floating point activations). Weights consume only <b>~16–18 GB total (~4.5 GB per GPU)</b>, leaving over <b>19 GB of VRAM per GPU</b> for high-throughput KV-caching with <code>gpu_memory_utilization = 0.90</code>.</p>
+  </div>
+
+  <h3>Reasoning Token Dynamics</h3>
+  <p>Gemma 4 natively generates structured reasoning thoughts bounded by <code>&lt;|channel&gt;thought...&lt;channel|&gt;</code>. While thinking improves multi-hop code reasoning, unconstrained thinking blocks (e.g. 2,048–4,096 tokens) consume 25–45 seconds per turn. With ~15 turns per task, thinking tokens alone would consume 8+ minutes, guaranteeing a fatal session timeout.</p>
+  <div class="formula">
+    <div class="eq">Turn Latency = (Tokens<sub>thought</sub> + Tokens<sub>tool_call</sub>) / Generation Speed ≈ (1024 + 150) / 45 tps ≈ 26.0s</div>
+    <div class="where">At <code>thinking_budget: 1024</code>, a 15-turn task spends ~390s (6.5 min) total across inference and tool execution.</div>
+  </div>
+
+  <div class="bench" id="bench-latency">
+    <header><span class="label">Bench</span><h4>Turn Budget & Latency Simulator</h4></header>
+    <p class="note">Adjust the reasoning token budget and number of turns to see if the session fits within the 5.0-minute competition target.</p>
+    <div class="controls">
+      <label for="l-budget">Thinking Budget (tokens) <output id="l-budget-out">1024</output><input id="l-budget" type="range" min="256" max="3072" step="128" value="1024"></label>
+      <label for="l-turns">Estimated Turns <output id="l-turns-out">12</output><input id="l-turns" type="range" min="4" max="25" step="1" value="12"></label>
+    </div>
+    <div class="readouts">
+      <div class="readout"><span>Inference Time</span><b id="l-inf">–</b></div>
+      <div class="readout"><span>Total Wall Time</span><b id="l-wall">–</b></div>
+      <div class="readout"><span>Budget Status</span><b id="l-status">–</b></div>
+    </div>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#sandboxed-tools">Next: The nine sandboxed tools →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 03 -->
+<section class="chapter" id="sandboxed-tools" data-track="1" data-title="The nine sandboxed tools" style="--c: var(--p-arch)">
+  <div class="eyebrow"><span class="num">03</span> Part I · Architecture & Harness</div>
+  <h2>The nine sandboxed tools</h2>
+  <p class="intro">In SWE-gemma, the agent does not execute arbitrary host functions. It interacts exclusively through 9 native sandboxed tools registered in <code>ToolRegistry</code>.</p>
+
+  <div class="tbl">
+    <table>
+      <tr><th>Tool Name</th><th>Category</th><th>Budget Counted</th><th>Key Constraints & Behavior</th></tr>
+      <tr><td><code>run_command</code></td><td>Execution</td><td><b>Yes</b></td><td>Executes bash command in <code>/workspace</code>. Capped at 5,000 chars output; 120s timeout.</td></tr>
+      <tr><td><code>read_file</code></td><td>Filesystem</td><td><b>Yes</b></td><td>1-indexed line slicing. Capped at 150 lines and 10,000 chars per call.</td></tr>
+      <tr><td><code>edit_file</code></td><td>Filesystem</td><td><b>Yes</b></td><td>Exact string replacement (requires unique match of <code>old_string</code>).</td></tr>
+      <tr><td><code>write_file</code></td><td>Filesystem</td><td><b>Yes</b></td><td>Writes new file in <code>/workspace</code>. Path traversal (e.g. <code>/tmp</code>) blocked.</td></tr>
+      <tr><td><code>search_similar_code</code></td><td>Graph AI</td><td><b>Yes</b></td><td>Cosine similarity lookup over AST and repository embeddings.</td></tr>
+      <tr><td><code>get_code_neighbors</code></td><td>Graph AI</td><td><b>Yes</b></td><td>Returns callers and callees in precomputed repository NetworkX graph.</td></tr>
+      <tr><td><code>get_code_subgraph</code></td><td>Graph AI</td><td><b>Yes</b></td><td>Extracts induced subgraph connecting multiple symbols.</td></tr>
+      <tr><td><code>get_status</code></td><td>Telemetry</td><td><b>No (Free)</b></td><td>Returns elapsed seconds, remaining seconds, tool calls, and turns.</td></tr>
+      <tr><td><code>submit_patch</code></td><td>Lifecycle</td><td><b>No (Free)</b></td><td>Runs <code>git add -N . && git diff HEAD</code> and captures the patch.</td></tr>
+    </table>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#compiler-schema">Next: Declarative compiler & schema →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 04 -->
+<section class="chapter" id="compiler-schema" data-track="1" data-title="Declarative compiler & schema" style="--c: var(--p-arch)">
+  <div class="eyebrow"><span class="num">04</span> Part I · Architecture & Harness</div>
+  <h2>Declarative compiler & schema</h2>
+  <p class="intro">Kaggle competitors cannot upload arbitrary Python entrypoints or dynamic host hooks. The entire submission is compiled by <code>adk-submission</code> from declarative YAML configurations.</p>
+
+  <h3>Packaging Structure</h3>
+  <pre><code>submission.zip (3.41 KB)
+├── agent.yaml          # Root agent definition (LlmAgent, tools list, model spec)
+├── eval_config.yaml    # Resource budget limits (max tool calls, time limits)
+└── prompts/
+    └── system.md       # Full behavioral instructions and pacing contracts</code></pre>
+
+  <p>The build script ([`build_submission.py`](file:///c:/Users/acquayefrank/Code/graft/build_submission.py)) performs Pydantic validation using the official <code>SandboxedAgentConfig</code> model, ensuring zero schema errors and an archive size strictly under 100 KB.</p>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#pacing-ceilings">Next: Pacing envelopes & zero-timeout rule →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 05 -->
+<section class="chapter" id="pacing-ceilings" data-track="1" data-title="Pacing envelopes & zero-timeout rule" style="--c: var(--p-pace)">
+  <div class="eyebrow"><span class="num">05</span> Part II · Operational Discipline</div>
+  <h2>Pacing envelopes & zero-timeout rule</h2>
+  <p class="intro">In SWE-bench, the single most destructive failure mode is not a syntax error—it is an <b>over-verification timeout</b>. A plausible patch submitted at minute 4 earns points; timing out at minute 6 earns exactly 0.0.</p>
+
+  <h3>The Stop-and-Submit Protocol</h3>
+  <div class="project">
+    <span class="label">In Graft</span>
+    <p>Section 5 of [`submission/prompts/system.md`](file:///c:/Users/acquayefrank/Code/graft/submission/prompts/system.md) codifies the <b>Mandatory Stop-and-Submit Rule</b>:</p>
+    <p><i>"The moment your reproduction script or target test passes, STOP! Do NOT write additional tests. Do NOT make secondary refactorings. Additional turns risk fatal session timeout and forfeiting all points."</i></p>
+  </div>
+  <p>In our baseline run, 43.3% of tasks failed due to fatal session timeouts. Implementing the Stop-and-Submit rule and a strict 4.5-minute operational ceiling slashed fatal timeouts to 13.3%, lifting resolution rate from 36.7% to 53.3%.</p>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#scratchpad-isolation">Next: Scratchpad isolation & path traversal →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 06 -->
+<section class="chapter" id="scratchpad-isolation" data-track="1" data-title="Scratchpad isolation & path traversal" style="--c: var(--p-pace)">
+  <div class="eyebrow"><span class="num">06</span> Part II · Operational Discipline</div>
+  <h2>Scratchpad isolation & path traversal</h2>
+  <p class="intro">How temporary reproduction scripts caused silent 0-score grading failures, and how workspace isolation eliminated them.</p>
+
+  <h3>The Path Traversal Trap</h3>
+  <p>In standard bash environments, engineers write temporary scripts to <code>/tmp/repro.py</code>. In SWE-gemma, <code>write_file</code> enforces strict container sandboxing: passing <code>/tmp/...</code> immediately fails with <code>Path traversal detected</code>. If the agent instead writes <code>repro.py</code> in <code>/workspace</code>, <code>git add -N .</code> includes the script in <code>agent_patch</code>, contaminating the submission.</p>
+
+  <div class="project">
+    <span class="label">The Fix in Graft</span>
+    <p>Graft standardized on <code>build/repro.py</code>. The harness setup automatically adds <code>build/</code> to <code>.git/info/exclude</code>. Scripts written to <code>build/repro.py</code> are completely invisible to <code>git diff HEAD</code>, preventing diff pollution.</p>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#clean-exit">Next: The clean-exit termination handshake →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 07 -->
+<section class="chapter" id="clean-exit" data-track="1" data-title="The clean-exit termination handshake" style="--c: var(--p-pace)">
+  <div class="eyebrow"><span class="num">07</span> Part II · Operational Discipline</div>
+  <h2>The clean-exit termination handshake</h2>
+  <p class="intro">In SWE-gemma, calling <code>submit_patch()</code> does not terminate the container. The runner requires a specific conversational event to break its execution loop.</p>
+
+  <h3>The Runner Termination Condition</h3>
+  <p>Inside [`swegemma/harness/agent_runner.py`](file:///c:/Users/acquayefrank/Code/graft/build/wheels/swegemma-0.2.11-py3-none-any.whl):</p>
+  <pre><code>if (
+    event_author not in {'user', 'harness', 'system', 'tool'}
+    and has_text
+    and not has_function_call       # <--- MUST HAVE ZERO TOOL CALLS
+    and context.patch_submitted
+):
+    logger.debug('Agent submitted patch and returned final completion message; terminating.')
+    break</code></pre>
+
+  <p>If the model outputs text like <i>"I've submitted the patch. I'll stop now"</i> but includes another tool call (such as <code>submit_patch()</code>), <code>has_function_call</code> remains <code>True</code>! The runner continues until the 6.0-minute timeout kills the task.</p>
+  <div class="project">
+    <span class="label">In Phase 6 Prompt</span>
+    <p>We codified the <b>Mandatory Clean-Exit Protocol</b>: immediately after <code>submit_patch()</code> returns <code>status: ok</code>, the agent MUST output text only with zero tool calls.</p>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#subagent-ablation">Next: Hierarchical agents vs single-agent →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 08 -->
+<section class="chapter" id="subagent-ablation" data-track="1" data-title="Hierarchical agents vs single-agent" style="--c: var(--p-eval)">
+  <div class="eyebrow"><span class="num">08</span> Part III · Empirical Findings</div>
+  <h2>Hierarchical agents vs single-agent</h2>
+  <p class="intro">In Phase 3, we designed and empirically tested <code>subagent_v1</code>, delegating code search to a read-only <code>code_analyzer</code> sub-agent tool. Here is why the single-agent baseline won.</p>
+
+  <h3>The Empirical Comparison (`dev10`)</h3>
+  <div class="tbl">
+    <table>
+      <tr><th>Repository</th><th>Resolved (Single-Agent <code>recovered_v2</code>)</th><th>Resolved (Sub-Agent <code>subagent_v1</code>)</th><th>Finding</th></tr>
+      <tr><td><code>fastapi/fastapi</code></td><td><b>3 / 5 (60.0%)</b></td><td><b>3 / 5 (60.0%)</b></td><td>79% context compaction win; isolated search</td></tr>
+      <tr><td><code>Textualize/rich</code></td><td><b>3 / 5 (60.0%)</b></td><td>1 / 5 (20.0%)</td><td>Delegation thrashing; 6 consecutive calls in <code>rich_3470</code></td></tr>
+      <tr><td><b>Total</b></td><td><b>6 / 10 (60.0%)</b></td><td>4 / 10 (40.0%)</td><td><b>Latency: 229.1s vs 298.7s (+69.6s coordination tax)</b></td></tr>
+    </table>
+  </div>
+  <p><b>Conclusion:</b> Under tight time budgets, sub-agent delegation introduces an expensive coordination latency tax (~10–14s per delegation). Single-agent discipline with direct graph tools is strictly superior.</p>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#competence-boundary">Next: The 15-line competence boundary →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 09 -->
+<section class="chapter" id="competence-boundary" data-track="1" data-title="The 15-line competence boundary" style="--c: var(--p-eval)">
+  <div class="eyebrow"><span class="num">09</span> Part III · Empirical Findings</div>
+  <h2>The 15-line competence boundary</h2>
+  <p class="intro">Across 30 real-world benchmark tasks, we discovered a sharp, mathematically defined performance cliff based on ground-truth diff size.</p>
+
+  <div class="tbl">
+    <table>
+      <tr><th>Patch Complexity</th><th>Ground-Truth Lines</th><th>Tasks Evaluated</th><th>Resolved Tasks</th><th>Resolution Rate</th><th>Mean Latency</th></tr>
+      <tr><td><b>Tiny</b></td><td>1–5 lines</td><td class="n">12</td><td class="n"><b>10</b></td><td class="n"><b>83.3%</b></td><td class="n">172.4s</td></tr>
+      <tr><td><b>Small</b></td><td>6–15 lines</td><td class="n">8</td><td class="n"><b>6</b></td><td class="n"><b>75.0%</b></td><td class="n">204.8s</td></tr>
+      <tr><td><b>Combined (Tiny + Small)</b></td><td><b>1–15 lines</b></td><td class="n"><b>20</b></td><td class="n"><b>16</b></td><td class="n"><b>80.0%</b></td><td class="n"><b>184.6s</b></td></tr>
+      <tr><td>Medium</td><td>16–50 lines</td><td class="n">5</td><td class="n">0</td><td class="n">0.0%</td><td class="n">311.2s</td></tr>
+      <tr><td>Large & Huge</td><td>&gt; 50 lines</td><td class="n">5</td><td class="n">0</td><td class="n">0.0%</td><td class="n">360.0s</td></tr>
+    </table>
+  </div>
+  <p>Below 15 lines, Graft resolves <b>80% of real-world bugs</b> across disparate Python codebases. Beyond 15 lines, single-turn patch generation fails due to cognitive drift and multi-hunk coordination loss.</p>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#post-mortems">Next: Four critical trace post-mortems →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 10 -->
+<section class="chapter" id="post-mortems" data-track="1" data-title="Four critical trace post-mortems" style="--c: var(--p-post)">
+  <div class="eyebrow"><span class="num">10</span> Part IV · Trace Post-Mortems</div>
+  <h2>Four critical trace post-mortems</h2>
+  <p class="intro">Detailed autopsy of the four primary failure modes discovered during trace inspection of the 14 failed tasks in <code>dev30</code>.</p>
+
+  <div class="example">
+    <span class="label">1. The Termination Deadlock (`fastapi_13920`)</span>
+    <p><b>What happened:</b> A 4-line bug in FastAPI type dependencies. The agent found the bug, fixed it, and called <code>submit_patch()</code> at Turn 37. Then it stated <i>"I've submitted the patch. I'll stop now"</i>—but emitted <code>submit_patch()</code> tool calls for 36 consecutive turns until killed at 6.0 min!</p>
+    <p><b>Lesson:</b> Open-weight LLMs must be explicitly instructed to output zero tool calls after submitting.</p>
+  </div>
+
+  <div class="example">
+    <span class="label">2. Tool Parameter Mangling (39 failed calls across `rich_4076`, `3052`, `3675`)</span>
+    <p><b>What happened:</b> When editing docstrings with parentheses and quotes, Gemma 4 emitted argument names like <code>...,old_string:</code> directly into string scalars. <code>edit_file</code> failed 11–16 times in a row with <code>missing mandatory parameter: old_string</code>.</p>
+    <p><b>Lesson:</b> Enforce a 1-strike fallback: if <code>edit_file</code> fails once, immediately execute a Python one-liner via <code>run_command</code>.</p>
+  </div>
+
+  <div class="example">
+    <span class="label">3. Zero-Telemetry Turn Blindness (`rich_3063`, `rich_3935`)</span>
+    <p><b>What happened:</b> Prompt instructed <i>"Check get_status if you reach Turn 10"</i>. In all 30 tasks, <code>get_status</code> was called <b>0 times</b>. The models spent 15+ turns rewriting broken repro scripts without realizing time was expiring.</p>
+    <p><b>Lesson:</b> Models cannot count turns. Telemetry triggers must be tied to failure events (e.g. repro fails on attempt 1).</p>
+  </div>
+
+  <div class="example">
+    <span class="label">4. Single-Character Omission (`fastapi_15588`)</span>
+    <p><b>What happened:</b> The agent fixed SSE newline splitting by checking <code>if "\n" in value:</code>. Hidden unit tests also passed carriage returns (<code>\r</code> and <code>\r\n</code>), failing assertion.</p>
+    <p><b>Lesson:</b> Pre-flight syntax and edge-case testing prevents single-character test failures.</p>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#leaderboard-dynamics">Next: Leaderboard dynamics & the 0.17 cluster →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 11 -->
+<section class="chapter" id="leaderboard-dynamics" data-track="1" data-title="Leaderboard dynamics & the 0.17 cluster" style="--c: var(--p-lb)">
+  <div class="eyebrow"><span class="num">11</span> Part V · Competition Strategy</div>
+  <h2>Leaderboard dynamics & the 0.17 cluster</h2>
+  <p class="intro">Analyzing the 3,387-team global leaderboard distribution and our breakthrough strategy.</p>
+
+  <h3>Leaderboard Score Distribution (October 21)</h3>
+  <div class="tbl">
+    <table>
+      <tr><th>Score</th><th class="n">Teams</th><th>Analysis & Standings</th></tr>
+      <tr><td>0.24</td><td class="n">3 teams</td><td>Global Competition Leaders (14.4 / 60 tasks)</td></tr>
+      <tr><td>0.22</td><td class="n">33 teams</td><td>Top Tier Contenders</td></tr>
+      <tr><td>0.20</td><td class="n">140 teams</td><td>Top 5% Boundary (12 / 60 tasks)</td></tr>
+      <tr><td>0.18</td><td class="n">410 teams</td><td>Next Frontier (11 / 60 tasks)</td></tr>
+      <tr><td><b>0.17</b></td><td class="n"><b>541 teams</b></td><td><b>The Giant Cluster (10 / 60 tasks) — Your Rank: 1034</b></td></tr>
+      <tr><td>0.15</td><td class="n">474 teams</td><td>Baseline Paced Tier (9 / 60 tasks)</td></tr>
+    </table>
+  </div>
+
+  <div class="bench" id="bench-cluster">
+    <header><span class="label">Bench</span><h4>Leaderboard Leap Simulator</h4></header>
+    <p class="note">See how solving just 1 or 2 more tasks breaks through the massive 541-team tie at 0.17.</p>
+    <div class="controls">
+      <label for="c-score">Public Score Target <select id="c-score">
+        <option value="0.17">0.17 (Current: 10 / 60 tasks)</option>
+        <option value="0.18" selected>0.183 (+1 task: 11 / 60 tasks)</option>
+        <option value="0.20">0.200 (+2 tasks: 12 / 60 tasks)</option>
+        <option value="0.22">0.220 (+3 tasks: 13 / 60 tasks)</option>
+      </select></label>
+    </div>
+    <div class="readouts">
+      <div class="readout"><span>Projected Rank</span><b id="c-rank">~480</b></div>
+      <div class="readout"><span>Teams Surpassed</span><b id="c-surpass">~550</b></div>
+      <div class="readout"><span>Percentile</span><b id="c-pct">Top 14%</b></div>
+    </div>
+  </div>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#roadmap-evolution">Next: Roadmap & Phase 7 multi-hunking →</a>
+  </div>
+</section>
+
+<!-- CHAPTER 12 -->
+<section class="chapter" id="roadmap-evolution" data-track="1" data-title="Roadmap & Phase 7 multi-hunking" style="--c: var(--p-lb)">
+  <div class="eyebrow"><span class="num">12</span> Part V · Competition Strategy</div>
+  <h2>Roadmap & Phase 7 multi-hunking</h2>
+  <p class="intro">With Phases 1 through 6 completed, Phase 7 attacks the 15-line competence boundary to break into the Top 5%.</p>
+
+  <h3>Roadmap Summary (Phases 1–7)</h3>
+  <ul>
+    <li><b>Phase 1 & 2 (Scaffold & Recovery):</b> Restored 9 native tools and fixed scratchpad leakage.</li>
+    <li><b>Phase 3 (Context Compaction):</b> Designed <code>subagent_v1</code> and ablated hierarchical delegation.</li>
+    <li><b>Phase 4 (Dev30 Benchmark Scaling):</b> Achieved 53.3% baseline, dispatched official submission <code>57407885</code>, drafted paper.</li>
+    <li><b>Phase 5 (Pacing Recalibration):</b> Relaxed ceiling to 4.5m / 30 calls, dispatched submission <code>57454091</code>.</li>
+    <li><b>Phase 6 (Protocol Calibration):</b> Hardened clean-exit handshake, 1-strike edit fallback, event telemetry.</li>
+    <li><b>Phase 7 (Multi-Hunk Decomposition & Pre-Flight Syntax):</b>
+      <ul>
+        <li>Enumerate target hunks before editing multi-file bugs.</li>
+        <li>Pre-submission syntax check via <code>python -m py_compile</code>.</li>
+        <li>Target: Resolve 1–2 medium tasks to push score to $\ge 0.20$.</li>
+      </ul>
+    </li>
+  </ul>
+  <div class="chapter-foot">
+    <button class="mark-read" type="button" aria-pressed="false">Mark chapter as read</button>
+    <a href="#glossary">Next: Glossary →</a>
+  </div>
+</section>
+
+<!-- GLOSSARY -->
+<section class="chapter" id="glossary" data-title="Glossary" style="--c: var(--ink-3)">
+  <div class="eyebrow"><span class="num">G</span> Reference</div>
+  <h2>Glossary</h2>
+  <p class="intro">Key systems and machine learning terms used throughout the manual.</p>
+  <dl class="glossary">
+    <dt id="g-swe-bench">SWE-bench</dt><dd>Standardized benchmark evaluating LLMs on resolving real-world GitHub issues via executable git diff patches.</dd>
+    <dt id="g-atif">ATIF (v1.7)</dt><dd>Agent Trajectory Interchange Format: structured JSON representation of an agent's multi-turn thoughts, tool calls, and observations.</dd>
+    <dt id="g-adk">ADK</dt><dd>Agent Development Kit: Google's framework for compiling hermetic, declarative agent specifications (SandboxedAgentConfig).</dd>
+    <dt id="g-swegemma">swegemma</dt><dd>The official competition orchestrator managing Docker container lifecycles, tool execution, and JUnit scoring.</dd>
+    <dt id="g-vllm">vLLM</dt><dd>High-throughput LLM serving engine featuring PagedAttention and multi-GPU tensor parallelism.</dd>
+    <dt id="g-stop-and-submit">Stop-and-Submit</dt><dd>Operational protocol commanding an agent to immediately submit upon repro test success, avoiding fatal over-verification timeouts.</dd>
+    <dt id="g-clean-exit">Clean-Exit</dt><dd>Protocol requiring a text-only turn with zero tool calls after submit_patch(), satisfying the runner's termination condition.</dd>
+    <dt id="g-w4a16">W4A16 QAT</dt><dd>Quantization format with 4-bit integer weights and 16-bit float activations, reducing Gemma 4 31B memory footprint to ~16 GB.</dd>
+  </dl>
+</section>
+
+</main>
+</div>
+
+<script>
+window.GLOSSARY = {
+  "swe-bench": ["SWE-bench", "Standardized benchmark evaluating LLMs on resolving real-world GitHub issues via executable git diff patches."],
+  "atif": ["ATIF (v1.7)", "Agent Trajectory Interchange Format: structured JSON representation of an agent's multi-turn thoughts, tool calls, and observations."],
+  "adk": ["ADK", "Agent Development Kit: Google's framework for compiling hermetic, declarative agent specifications (SandboxedAgentConfig)."],
+  "swegemma": ["swegemma", "The official competition orchestrator managing Docker container lifecycles, tool execution, and JUnit scoring."],
+  "vllm": ["vLLM", "High-throughput LLM serving engine featuring PagedAttention and multi-GPU tensor parallelism."],
+  "stop-and-submit": ["Stop-and-Submit", "Operational protocol commanding an agent to immediately submit upon repro test success, avoiding fatal over-verification timeouts."],
+  "clean-exit": ["Clean-Exit", "Protocol requiring a text-only turn with zero tool calls after submit_patch(), satisfying the runner's termination condition."],
+  "w4a16": ["W4A16 QAT", "Quantization format with 4-bit integer weights and 16-bit float activations, reducing Gemma 4 31B memory footprint to ~16 GB."]
+};
+
+(function() {
+  "use strict";
+  function $(id) { return document.getElementById(id); }
+  
+  // Progress & LocalStorage
+  var chapters = Array.prototype.slice.call(document.querySelectorAll("section.chapter[data-track]"));
+  var readSet = {};
+  try { readSet = JSON.parse(localStorage.getItem("graft-manual-read") || "{}") || {}; } catch(e) {}
+  
+  function renderProgress() {
+    var count = 0;
+    chapters.forEach(function(ch) {
+      var on = !!readSet[ch.id];
+      if (on) count++;
+      var btn = ch.querySelector(".mark-read");
+      if (btn) {
+        btn.setAttribute("aria-pressed", on ? "true" : "false");
+        btn.textContent = on ? "Read ✓ (Click to undo)" : "Mark chapter as read";
+      }
+      var link = document.querySelector('nav.toc a[href="#' + ch.id + '"]');
+      if (link) link.classList.toggle("read", on);
+    });
+    $("prog-text").textContent = count + " / " + chapters.length + " read";
+    $("prog-bar").style.width = (100 * count / chapters.length) + "%";
+  }
+  
+  chapters.forEach(function(ch) {
+    var btn = ch.querySelector(".mark-read");
+    if (btn) {
+      btn.addEventListener("click", function() {
+        readSet[ch.id] = !readSet[ch.id];
+        try { localStorage.setItem("graft-manual-read", JSON.stringify(readSet)); } catch(e) {}
+        renderProgress();
+      });
+    }
+  });
+  renderProgress();
+
+  // TOC drawer for mobile
+  var menuBtn = $("menu-btn"), toc = $("toc");
+  if (menuBtn && toc) {
+    menuBtn.addEventListener("click", function() {
+      var open = toc.classList.toggle("open");
+      menuBtn.setAttribute("aria-expanded", open ? "true" : "false");
+    });
+    toc.addEventListener("click", function(e) {
+      if (e.target.closest("a")) {
+        toc.classList.remove("open");
+        menuBtn.setAttribute("aria-expanded", "false");
+      }
+    });
+  }
+
+  // Active TOC link on scroll
+  if ("IntersectionObserver" in window) {
+    var io = new IntersectionObserver(function(entries) {
+      entries.forEach(function(en) {
+        if (en.isIntersecting) {
+          document.querySelectorAll("nav.toc a.current").forEach(function(a) { a.classList.remove("current"); });
+          var a = document.querySelector('nav.toc a[href="#' + en.target.id + '"]');
+          if (a) a.classList.add("current");
+        }
+      });
+    }, { rootMargin: "-20% 0px -70% 0px" });
+    document.querySelectorAll("section.chapter").forEach(function(s) { io.observe(s); });
+  }
+
+  // Quizzes
+  document.querySelectorAll(".q").forEach(function(q) {
+    var ans = q.getAttribute("data-answer"), why = q.querySelector(".why");
+    q.querySelectorAll("input[type=radio]").forEach(function(input) {
+      input.addEventListener("change", function() {
+        q.querySelectorAll("label").forEach(function(l) { l.classList.remove("right", "wrong"); });
+        var lab = input.closest("label");
+        lab.classList.add(input.value === ans ? "right" : "wrong");
+        if (input.value !== ans) {
+          var corr = q.querySelector('input[value="' + ans + '"]');
+          if (corr) corr.closest("label").classList.add("right");
+        }
+        why.hidden = false;
+        why.innerHTML = "<b>" + (input.value === ans ? "Correct! " : "Not quite. ") + "</b>" + why.textContent;
+      });
+    });
+  });
+
+  // Glossary Tooltips
+  var tip = document.createElement("div"); tip.className = "tip"; tip.hidden = true; document.body.appendChild(tip);
+  function showTip(el) {
+    var g = window.GLOSSARY[el.getAttribute("data-g")];
+    if (!g) return;
+    tip.innerHTML = "<b>" + g[0] + "</b><span>" + g[1] + "</span>";
+    tip.hidden = false;
+    var r = el.getBoundingClientRect(), tw = tip.offsetWidth, th = tip.offsetHeight;
+    var left = Math.min(Math.max(16, r.left + window.scrollX), window.scrollX + document.documentElement.clientWidth - tw - 16);
+    var top = r.bottom + window.scrollY + 6;
+    if (r.bottom + th + 12 > window.innerHeight) top = r.top + window.scrollY - th - 6;
+    tip.style.left = left + "px"; tip.style.top = top + "px";
+  }
+  function hideTip() { tip.hidden = true; }
+  document.addEventListener("mouseover", function(e) { var el = e.target.closest && e.target.closest(".g"); if (el) showTip(el); });
+  document.addEventListener("mouseout", function(e) { if (e.target.closest && e.target.closest(".g")) hideTip(); });
+
+  // Latency Bench
+  var bBudget = $("l-budget"), bTurns = $("l-turns");
+  if (bBudget && bTurns) {
+    function calcLatency() {
+      var b = +bBudget.value, t = +bTurns.value;
+      $("l-budget-out").textContent = b;
+      $("l-turns-out").textContent = t;
+      var secPerTurn = (b + 120) / 45 + 3.5; // token time + tool roundtrip
+      var totalSec = secPerTurn * t;
+      $("l-inf").textContent = Math.round(secPerTurn * t * 0.85) + "s";
+      $("l-wall").textContent = Math.round(totalSec) + "s (" + (totalSec / 60).toFixed(1) + "m)";
+      var status = $("l-status");
+      if (totalSec <= 270) {
+        status.textContent = "Safe (< 4.5m)"; status.style.color = "var(--good)";
+      } else if (totalSec <= 330) {
+        status.textContent = "Tight (< 5.5m)"; status.style.color = "var(--warn)";
+      } else {
+        status.textContent = "Timeout Risk (> 5.5m)"; status.style.color = "var(--bad)";
+      }
+    }
+    bBudget.addEventListener("input", calcLatency);
+    bTurns.addEventListener("input", calcLatency);
+    calcLatency();
+  }
+
+  // Cluster Bench
+  var cScore = $("c-score");
+  if (cScore) {
+    var ranks = { "0.17": ["~1034", "0", "Top 30%"], "0.18": ["~480", "~550", "Top 14%"], "0.20": ["~175", "~855", "Top 5%"], "0.22": ["~36", "~1,000", "Top 1%"] };
+    cScore.addEventListener("change", function() {
+      var d = ranks[cScore.value];
+      $("c-rank").textContent = d[0];
+      $("c-surpass").textContent = d[1];
+      $("c-pct").textContent = d[2];
+    });
+  }
+
+  // Full-Text Search
+  var searchInput = $("search"), searchResults = $("results");
+  var searchIndex = [];
+  document.querySelectorAll("section.chapter").forEach(function(s) {
+    var title = s.getAttribute("data-title");
+    s.querySelectorAll("h3, p, li, td").forEach(function(el) {
+      var txt = el.textContent.trim();
+      if (txt.length > 10) searchIndex.push({ id: s.id, title: title, text: txt });
+    });
+  });
+  
+  function doSearch() {
+    var q = searchInput.value.trim().toLowerCase();
+    if (q.length < 2) { searchResults.hidden = true; searchResults.innerHTML = ""; return; }
+    var seen = {}, hits = [];
+    for (var i = 0; i < searchIndex.length && hits.length < 8; i++) {
+      var it = searchIndex[i], pos = it.text.toLowerCase().indexOf(q);
+      if (pos >= 0) {
+        var key = it.id + it.text.slice(0, 30);
+        if (seen[key]) continue; seen[key] = true;
+        var start = Math.max(0, pos - 40), end = Math.min(it.text.length, pos + q.length + 60);
+        var snippet = (start > 0 ? "…" : "") + it.text.slice(start, end) + (end < it.text.length ? "…" : "");
+        var re = new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"), "ig");
+        var html = snippet.replace(re, function(m) { return "<mark>" + m + "</mark>"; });
+        hits.push('<a href="#' + it.id + '"><b>' + it.title + '</b><small>' + html + '</small></a>');
+      }
+    }
+    searchResults.innerHTML = hits.length ? hits.join("") : '<div style="padding:8px 10px;font-size:0.85rem;color:var(--ink-2)">No matching sections found.</div>';
+    searchResults.hidden = false;
+  }
+  searchInput.addEventListener("input", doSearch);
+  searchResults.addEventListener("click", function() { searchResults.hidden = true; });
+  document.addEventListener("click", function(e) { if (!e.target.closest(".search")) searchResults.hidden = true; });
+})();
+</script>
+
+</body>
+</html>
