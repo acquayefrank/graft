@@ -61,15 +61,34 @@ assert config.get("model") == "gemma-4-31b-it-qat-w4a16-ct", f"Unexpected model 
 tools = config.get("tools", [])
 assert tools == EXPECTED_TOOLS, f"Tools mismatch. Expected {EXPECTED_TOOLS}, got {tools}"
 
-# Optional Pydantic SandboxedAgentConfig validation if adk is available
+# Pydantic SandboxedAgentConfig validation
 try:
-    from adk_submission.schema import SandboxedAgentConfig
-    # Use IncludeLoader to resolve !include for schema validation
-    raw_cfg = yaml.load((SUBMISSION_DIR / "agent.yaml").read_text(encoding="utf-8"), Loader=IncludeLoader)
-    SandboxedAgentConfig.model_validate(raw_cfg)
-    print("[OK] Validated schema against SandboxedAgentConfig Pydantic model.")
-except ImportError:
-    pass
+    try:
+        from adk_submission.schema import SandboxedAgentConfig
+    except ImportError:
+        whl_path = ROOT / "build" / "wheels" / "adk_submission-0.2.13-py3-none-any.whl"
+        if whl_path.is_file():
+            import types
+            pkg = types.ModuleType("adk_submission")
+            pkg.__path__ = []
+            sys.modules["adk_submission"] = pkg
+            with zipfile.ZipFile(whl_path) as z:
+                for m in ["errors", "paths", "schema"]:
+                    code = z.read(f"adk_submission/{m}.py").decode("utf-8")
+                    mod = types.ModuleType(f"adk_submission.{m}")
+                    exec(code, mod.__dict__)
+                    sys.modules[f"adk_submission.{m}"] = mod
+                    setattr(pkg, m, mod)
+            SandboxedAgentConfig = pkg.schema.SandboxedAgentConfig
+        else:
+            SandboxedAgentConfig = None
+
+    if SandboxedAgentConfig is not None:
+        raw_cfg = yaml.load((SUBMISSION_DIR / "agent.yaml").read_text(encoding="utf-8"), Loader=IncludeLoader)
+        SandboxedAgentConfig.model_validate(raw_cfg)
+        print("[OK] Validated schema against SandboxedAgentConfig Pydantic model (0 errors).")
+except Exception as e:
+    sys.exit(f"Error validating agent config schema: {e}")
 
 # 2. Build submission.zip
 if OUT_ZIP.is_file():
