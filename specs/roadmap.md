@@ -105,6 +105,32 @@ Following trace-level empirical discovery across `dev30` execution logs showing 
 - **Paper Track Empirical Insights Integration**: Integrated the four trace post-mortem discoveries into [`paper/tables/failure_taxonomy.md`](file:///c:/Users/acquayefrank/Code/graft/paper/tables/failure_taxonomy.md) and expanded Section 4 of [`paper/draft.md`](file:///c:/Users/acquayefrank/Code/graft/paper/draft.md) with Subsection 4.2 ("Micro-Architectural Failure Modes in Open-Weight Tool Use"). Verified total word count at 2,679 words ($\le 3,000$ limit).
 - **Branch**: Merged into `main`.
 
+---
+
+## Phase 7: Multi-Hunk Patch Decomposition & Syntax Pre-Flight
+
+Following empirical analysis demonstrating the 15-line competence boundary (0% resolution on tasks with 16–50 lines of ground-truth diff due to multi-site edit thrashing and syntax dropouts), Phase 7 introduces sequential multi-hunk patch planning and pre-submission syntax verification (`python -m py_compile`) to expand agent capability into medium-complexity tasks.
+
+### Micro-Phase 7.1: Multi-Hunk Decomposition Protocol
+- **Task**: Update [`submission/prompts/system.md`](file:///c:/Users/acquayefrank/Code/graft/submission/prompts/system.md):
+  - Add multi-site planning rule: when a bug spans multiple functions or files, the agent must enumerate target hunks before applying edits.
+  - Defer full reproduction re-runs until all enumerated hunks are placed, preventing premature rollback of partial fixes.
+- **Deliverable**: Prompt update with multi-hunk decomposition protocol.
+- **Verification**: Prompt diff and cognitive budget review.
+
+### Micro-Phase 7.2: Pre-Submission Syntax Pre-Flight Guardrail
+- **Task**: Update [`submission/prompts/system.md`](file:///c:/Users/acquayefrank/Code/graft/submission/prompts/system.md):
+  - Add mandatory pre-submission check: run `python -m py_compile <modified_file>` via `run_command` prior to `submit_patch()`.
+  - If a syntax or indentation error is detected, fix it before calling `submit_patch()`.
+- **Deliverable**: Pre-flight syntax validation instruction.
+- **Verification**: Verification against Python 3.12 syntax checking.
+
+### Micro-Phase 7.3: Benchmark Validation & Packaging
+- **Task**: Rebuild [`submission.zip`](file:///c:/Users/acquayefrank/Code/graft/submission.zip) and evaluate on the 5 medium tasks in `dev30` (`rich_3052`, `rich_3675`, `rich_3938`, `rich_4006`, `fastapi_15588`).
+- **Deliverable**: Verified `submission.zip` package.
+- **Exit Criteria**: Resolution of at least 1 medium task and clean `build_submission.py` validation.
+
+
 
 
 
