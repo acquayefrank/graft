@@ -15,3 +15,8 @@ submission.zip
 __pycache__/
 build/
 scratch/
+*.aux
+*.log
+*.out
+paper/main.pdf
+

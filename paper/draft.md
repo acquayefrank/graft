@@ -163,7 +163,7 @@ Below 15 lines, Gemma 4 31B equipped with Graft's pacing and tools is exceptiona
 ### 4.2 Micro-Architectural Failure Modes in Open-Weight Tool Use
 Granular trace post-mortems across failed tasks uncovered three unexpected failure modes at the intersection of open-weight LLMs and execution harnesses:
 
-1. **The Termination Deadlock**: In `fastapi_13920` (4 lines ground-truth), the agent correctly repaired `fastapi/_compat/shared.py`, verified its repro, and executed `submit_patch()` at Turn 37. However, the evaluation harness required a completion turn containing text with zero tool calls (`not has_function_call and context.patch_submitted`). Because the agent generated `submit_patch()` tool calls alongside completion text, the runner remained active for 36 redundant turns until killed by the 6.0-minute timeout. Prompts must strictly enforce a text-only terminal turn.
+1. **The Termination Handshake Trap**: In `fastapi_13920` (4 lines ground-truth), the agent correctly repaired `fastapi/_compat/shared.py` and executed `submit_patch()` at Turn 37, yet persisted emitting `submit_patch()` alongside chat text for 36 redundant turns until timing out at 6.0 minutes. However, counteracting this by commanding agents to output text-only turns after submission creates an inverse pathology: open models emit text without calling `submit_patch()`, triggering harness continuation nudges. Prompts must enforce calling `submit_patch()` as an atomic, final tool action without post-submission dialogue.
 
 2. **Tool Parameter Serialization Fragility**: Across `rich_4076`, `rich_3052`, and `rich_3675`, the agent experienced 39 consecutive `edit_file` failures due to token-level argument concatenation. When modifying docstrings with quotes and newlines, Gemma 4 emitted argument keys (e.g., `,old_string:`) inside text scalars, dropping mandatory parameters. Fallbacks to `sed -i` broke secondary assertions. A deterministic 1-strike fallback to Python one-liners (`python -c "..."`) is essential to prevent turn-wasting error cascades.
 
@@ -172,10 +172,10 @@ Granular trace post-mortems across failed tasks uncovered three unexpected failu
 | Operational Failure Mode | Root Trigger | Observed Frequency | Deployed Architectural Mitigation |
 | :--- | :--- | :--- | :--- |
 | **Tool Argument Mangling** | Token concatenation in multiline docstrings (`...,old_string:`) | 39 calls across 3 tasks | Strict `old_string`-first parameter ordering; 1-strike fallback to bash Python one-liners (`python -c "..."`). |
-| **Runner Termination Deadlock** | Emitting `submit_patch()` tool call with completion text | 36 redundant turns (`fastapi_13920`) | Clean-Exit protocol: text-only final turn with zero tool calls (`not has_function_call`) immediately upon submission. |
+| **Runner Termination Deadlock** | Emitting `submit_patch()` tool call with completion text | 36 redundant turns (`fastapi_13920`) | Atomic single-action submission (`submit_patch()`); prohibiting post-submission turns and continuation nudges. |
 | **Infinite Repro Loop** | Unbounded reproduction script for hang/freeze bugs | 2 tasks (`rich_3935`, `3063`) | Mandatory `timeout 5 python build/repro.py` shell wrapper. |
 | **Perfectionist Hesitation** | Continued exploration after repro passes | 3 tasks in dev runs | Mandatory Stop-and-Submit rule: halt all reading the instant reproduction script passes. |
-| **Test Tampering / Diff Leak** | Scratchpad scripts or edits to test files | Baseline 43% timeout / fail | `build/` exclusion in `.git/info/exclude`; Container B automatic test-stripping invariant. |
+| **Diff Leak & Bytecode Contamination** | Scratchpad scripts, `.pyc` cache files, or test edits | Baseline 43% timeout / fail | `build/` exclusion in `.git/info/exclude`; prohibiting `py_compile`; Container B test-stripping invariant. |
 
 ---
 
