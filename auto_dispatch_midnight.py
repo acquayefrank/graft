@@ -17,7 +17,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent
 SUBMISSION_ZIP = ROOT / "submission.zip"
 RESULTS_LOG = ROOT / "results" / "leaderboard_submissions.md"
-KAGGLE_PYTHON = Path("/home/acquayefrank/.local/share/uv/tools/kaggle/bin/python")
+KAGGLE_PYTHON = "/home/acquayefrank/.local/share/uv/tools/kaggle/bin/python"
 
 
 def get_target_time() -> datetime.datetime:
@@ -39,20 +39,31 @@ def verify_package():
 
 def dispatch_submission() -> dict:
     wsl_zip_path = f"/mnt/c/{str(SUBMISSION_ZIP.relative_to('C:/')).replace('\\', '/')}"
-    cmd_str = (
-        f"{KAGGLE_PYTHON} -c \""
-        f"from kaggle.api.kaggle_api_extended import KaggleApi; "
-        f"api = KaggleApi(); api.authenticate(); "
-        f"msg = 'Project Graft: Paced Single-Agent (recovered_v2 recalibrated fallback)'; "
-        f"api.competition_submit('{wsl_zip_path}', msg, 'gemma-4-developer-agent'); "
-        f"import time; time.sleep(3); "
-        f"subs = api.competitions_submissions_list('gemma-4-developer-agent'); "
-        f"latest = subs[0] if subs else None; "
-        f"print(f'REF:{{getattr(latest, \\'ref\\', \\'\\')}},STATUS:{{getattr(latest, \\'status\\', \\'\\')}}')\""
-    )
+    py_script = f"""
+import time
+from kaggle.api.kaggle_api_extended import KaggleApi
 
-    print(f"[*] Executing submission via WSL Kaggle API client...")
-    res = subprocess.run(["wsl", "bash", "-c", cmd_str], capture_output=True, text=True)
+api = KaggleApi()
+api.authenticate()
+
+msg = 'Project Graft: Paced Single-Agent (recovered_v2 recalibrated fallback)'
+resp = api.competition_submit('{wsl_zip_path}', msg, 'gemma-4-developer-agent')
+time.sleep(3)
+
+subs = api.competition_submissions('gemma-4-developer-agent')
+latest = subs[0] if subs else None
+ref = getattr(latest, 'ref', str(getattr(resp, 'ref', '')))
+status = getattr(latest, 'status', 'PENDING')
+print(f"REF:{{ref}},STATUS:{{status}}")
+"""
+
+    print("[*] Executing submission via WSL Kaggle API client (stdin)...")
+    res = subprocess.run(
+        ["wsl", KAGGLE_PYTHON, "-"],
+        input=py_script,
+        capture_output=True,
+        text=True,
+    )
     print("STDOUT:", res.stdout)
     if res.returncode != 0:
         print("STDERR:", res.stderr)
